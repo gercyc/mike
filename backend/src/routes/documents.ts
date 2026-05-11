@@ -23,6 +23,7 @@ import {
 } from "../lib/documentVersions";
 import { ensureDocAccess } from "../lib/access";
 import { singleFileUpload } from "../lib/upload";
+import { generateDocx } from "../lib/chatTools";
 
 export const documentsRouter = Router();
 const ALLOWED_TYPES = new Set(["pdf", "docx", "doc"]);
@@ -45,6 +46,103 @@ documentsRouter.get("/", requireAuth, async (req, res) => {
   await attachLatestVersionNumbers(db, docs);
   await attachActiveVersionPaths(db, docs);
   res.json(docs);
+});
+
+// POST /single-documents/from-markdown
+//
+// Used by the Word add-in's "Create new" button. Converts a chunk of
+// markdown text into a proper .docx, registers it as a document, optionally
+// attaches it to a project, and returns the document record. Reuses the
+// same `generateDocx` pipeline that the chat assistant's `generate_docx`
+// tool calls — guarantees identical formatting (Times New Roman, 11pt,
+// title-case heading) and project attachment behavior.
+documentsRouter.post("/from-markdown", requireAuth, async (req, res) => {
+  const userId = res.locals.userId as string;
+  const { markdown, project_id, filename } = (req.body ?? {}) as {
+    markdown?: string;
+    project_id?: string | null;
+    filename?: string;
+  };
+  if (typeof markdown !== "string" || !markdown.trim()) {
+    return void res
+      .status(400)
+      .json({ detail: "markdown body is required" });
+  }
+
+  // Extract a title from the first markdown heading; fall back to provided
+  // filename or "Document".
+  const trimmed = markdown.trim();
+  let title = "Document";
+  const headingMatch = trimmed.match(/^#{1,3}\s+(.+)$/m);
+  if (filename && filename.trim()) {
+    title = filename.replace(/\.docx?$/i, "").trim();
+  } else if (headingMatch) {
+    title = headingMatch[1].trim();
+  }
+
+  // Split markdown into sections by top-level headings. Anything before the
+  // first heading becomes a leading section with no heading.
+  type Section = {
+    heading?: string;
+    level?: number;
+    content?: string;
+  };
+  const sections: Section[] = [];
+  const lines = trimmed.split("\n");
+  let currentHeading: string | undefined;
+  let currentLevel: number | undefined;
+  let buffer: string[] = [];
+  const flush = () => {
+    const content = buffer.join("\n").trim();
+    if (currentHeading || content) {
+      sections.push({
+        heading: currentHeading,
+        level: currentLevel,
+        content,
+      });
+    }
+    buffer = [];
+  };
+  for (const line of lines) {
+    const m = line.match(/^(#{1,3})\s+(.+)$/);
+    if (m) {
+      flush();
+      currentHeading = m[2].trim();
+      currentLevel = m[1].length;
+    } else {
+      buffer.push(line);
+    }
+  }
+  flush();
+
+  if (sections.length === 0) {
+    sections.push({ content: trimmed });
+  }
+
+  const db = createServerSupabase();
+  try {
+    const result = await generateDocx(title, sections, userId, db, {
+      projectId: project_id ?? null,
+    });
+    if (!("filename" in result) || !("download_url" in result)) {
+      return void res
+        .status(500)
+        .json({ detail: "Failed to generate document." });
+    }
+    const documentId = (result as { document_id?: string }).document_id;
+    res.json({
+      id: documentId,
+      filename: result.filename,
+      download_url: result.download_url,
+      project_id: project_id ?? null,
+    });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("[from-markdown] failed", err);
+    res.status(500).json({
+      detail: `Could not save chat output: ${(err as Error).message}`,
+    });
+  }
 });
 
 // POST /single-documents

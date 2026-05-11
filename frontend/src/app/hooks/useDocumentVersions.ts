@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { authHeader } from "@/lib/mikeAuth";
 
 export interface DocumentVersionRow {
     id: string;
@@ -52,20 +52,12 @@ export function useDocumentVersions(
 
         (async () => {
             try {
-                const {
-                    data: { session },
-                } = await supabase.auth.getSession();
-                const token = session?.access_token;
                 const apiBase =
                     process.env.NEXT_PUBLIC_API_BASE_URL ??
                     "http://localhost:3001";
                 const resp = await fetch(
                     `${apiBase}/single-documents/${documentId}/versions`,
-                    {
-                        headers: token
-                            ? { Authorization: `Bearer ${token}` }
-                            : {},
-                    },
+                    { headers: authHeader() },
                 );
                 if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
                 const data = (await resp.json()) as {

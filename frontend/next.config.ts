@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-    /* config options here */
     reactCompiler: true,
     async rewrites() {
         return [
@@ -16,6 +15,7 @@ const nextConfig: NextConfig = {
         ];
     },
     skipTrailingSlashRedirect: true,
+    transpilePackages: ["@mike/shared"],
 };
 
 export default nextConfig;

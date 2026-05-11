@@ -16,7 +16,7 @@ import type {
 } from "../shared/types";
 import { EditCard, applyOptimisticResolution } from "./EditCard";
 import { PreResponseWrapper } from "../shared/PreResponseWrapper";
-import { supabase } from "@/lib/supabase";
+import { authHeader } from "@/lib/mikeAuth";
 
 /**
  * Card rendered above the per-edit EditCards when a message produced
@@ -75,10 +75,6 @@ function BulkEditActions({
         setBusy(verb);
         setProgress({ done: 0, total: pending.length });
         try {
-            const {
-                data: { session },
-            } = await supabase.auth.getSession();
-            const token = session?.access_token;
             const apiBase =
                 process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
 
@@ -107,9 +103,7 @@ function BulkEditActions({
                         `${apiBase}/single-documents/${annotation.document_id}/edits/${annotation.edit_id}/${verb}`,
                         {
                             method: "POST",
-                            headers: token
-                                ? { Authorization: `Bearer ${token}` }
-                                : undefined,
+                            headers: authHeader(),
                         },
                     );
                     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -620,13 +614,7 @@ function DocDownloadBlock({
         if (busy || isReloading || !href) return;
         setBusy(true);
         try {
-            const {
-                data: { session },
-            } = await supabase.auth.getSession();
-            const token = session?.access_token;
-            const resp = await fetch(href, {
-                headers: token ? { Authorization: `Bearer ${token}` } : {},
-            });
+            const resp = await fetch(href, { headers: authHeader() });
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             const blob = await resp.blob();
             const blobUrl = URL.createObjectURL(blob);

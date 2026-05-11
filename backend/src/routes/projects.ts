@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth";
 import { createServerSupabase } from "../lib/supabase";
-import { createClient } from "@supabase/supabase-js";
 import {
   attachActiveVersionPaths,
   attachLatestVersionNumbers,
@@ -10,6 +9,7 @@ import { downloadFile, uploadFile, storageKey } from "../lib/storage";
 import { docxToPdf, convertedPdfKey } from "../lib/convert";
 import { checkProjectAccess } from "../lib/access";
 import { singleFileUpload } from "../lib/upload";
+import { eventBus } from "../lib/eventBus";
 
 export const projectsRouter = Router();
 const ALLOWED_TYPES = new Set(["pdf", "docx", "doc"]);
@@ -94,6 +94,12 @@ projectsRouter.post("/", requireAuth, async (req, res) => {
     .select("*")
     .single();
   if (error) return void res.status(500).json({ detail: error.message });
+  // Phase 2 bridge: notify all subscribed surfaces (Next frontend, Word add-in)
+  // so they can refresh their project list without polling.
+  eventBus.publish(userId, {
+    type: "project.created",
+    project: { ...data, documents: [], shared_with: data.shared_with ?? [] },
+  });
   res.status(201).json({ ...data, documents: [] });
 });
 
@@ -166,18 +172,14 @@ projectsRouter.get("/:projectId/people", requireAuth, async (req, res) => {
   if (!isOwner && !isShared)
     return void res.status(404).json({ detail: "Project not found" });
 
-  // Pull every auth user (matching the lookup endpoint's pattern). For
-  // larger deployments this should page or be replaced with a bulk-by-id
-  // RPC, but it keeps things simple while user counts are modest.
-  const { data: usersData } = await db.auth.admin.listUsers({ perPage: 1000 });
-  const allUsers = usersData?.users ?? [];
+  // LOCAL-MIGRATION: in local mode there's only one user. We synthesize
+  // the same userByEmail / userById maps the original code expected so the
+  // rest of this handler keeps working unchanged.
   const userByEmail = new Map<string, { id: string; email: string }>();
   const userById = new Map<string, { id: string; email: string }>();
-  for (const u of allUsers) {
-    if (!u.email) continue;
-    const lower = u.email.toLowerCase();
-    userByEmail.set(lower, { id: u.id, email: u.email });
-    userById.set(u.id, { id: u.id, email: u.email });
+  if (userEmail) {
+    userByEmail.set(userEmail.toLowerCase(), { id: "local", email: userEmail });
+    userById.set("local", { id: "local", email: userEmail });
   }
 
   const memberUserIds: string[] = [];
@@ -267,7 +269,12 @@ projectsRouter.patch("/:projectId", requireAuth, async (req, res) => {
     current_version_id?: string | null;
   }[];
   await attachActiveVersionPaths(db, docsTyped);
-  res.json({ ...data, documents: docsTyped, folders: folderData ?? [] });
+  const out = { ...data, documents: docsTyped, folders: folderData ?? [] };
+  eventBus.publish(userId, {
+    type: "project.updated",
+    project: out as never,
+  });
+  res.json(out);
 });
 
 // DELETE /projects/:projectId
@@ -281,6 +288,7 @@ projectsRouter.delete("/:projectId", requireAuth, async (req, res) => {
     .eq("id", projectId)
     .eq("user_id", userId);
   if (error) return void res.status(500).json({ detail: error.message });
+  eventBus.publish(userId, { type: "project.deleted", project_id: projectId });
   res.status(204).send();
 });
 

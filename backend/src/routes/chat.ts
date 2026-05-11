@@ -13,6 +13,7 @@ import {
 import { completeText } from "../lib/llm";
 import { getUserApiKeys, getUserModelSettings } from "../lib/userSettings";
 import { checkProjectAccess } from "../lib/access";
+import { buildContextSuffix } from "../lib/contextSuffix";
 
 export const chatRouter = Router();
 
@@ -316,11 +317,23 @@ chatRouter.post("/:chatId/generate-title", requireAuth, async (req, res) => {
 // POST /chat — streaming
 chatRouter.post("/", requireAuth, async (req, res) => {
     const userId = res.locals.userId as string;
-    const { messages, chat_id, project_id, model } = req.body as {
+    const {
+        messages,
+        chat_id,
+        project_id,
+        model,
+        editMode,
+        creation_mode,
+        selection,
+    } = req.body as {
         messages: ChatMessage[];
         chat_id?: string;
         project_id?: string;
         model?: string;
+        /** Composer-time toggles fed into the system prompt suffix. */
+        editMode?: "track" | "comments";
+        creation_mode?: "project" | "this_word_doc";
+        selection?: { text: string; has_selection: boolean };
     };
 
     console.log("[chat/stream] incoming request", {
@@ -389,6 +402,8 @@ chatRouter.post("/", requireAuth, async (req, res) => {
 
     console.log("[chat/stream] resolved chatId", chatId);
 
+    const downstreamMessages = messages;
+
     const lastUser = [...messages].reverse().find((m) => m.role === "user");
     if (lastUser) {
         await db.from("chat_messages").insert({
@@ -401,7 +416,7 @@ chatRouter.post("/", requireAuth, async (req, res) => {
     }
 
     const { docIndex, docStore } = await buildDocContext(
-        messages,
+        downstreamMessages,
         userId,
         db,
         chatId,
@@ -411,12 +426,29 @@ chatRouter.post("/", requireAuth, async (req, res) => {
         filename: info.filename,
     }));
     const enrichedMessages = await enrichWithPriorEvents(
-        messages,
+        downstreamMessages,
         chatId,
         db,
         docIndex,
     );
-    const apiMessages = buildMessages(enrichedMessages, docAvailability);
+    // Composer-time toggles → system-prompt suffix (Hide PII / edit mode /
+    // creation mode / Word selection).
+    const composerSuffix = buildContextSuffix({
+        editMode,
+        creationMode: creation_mode,
+        selection,
+    });
+    console.log("[chat/stream] composer toggles", {
+        editMode,
+        creation_mode,
+        hasSelection: !!selection?.has_selection,
+        suffixChars: composerSuffix.length,
+    });
+    const apiMessages = buildMessages(
+        enrichedMessages,
+        docAvailability,
+        composerSuffix || undefined,
+    );
 
     const workflowStore = await buildWorkflowStore(userId, userEmail, db);
 
@@ -432,7 +464,9 @@ chatRouter.post("/", requireAuth, async (req, res) => {
     res.setHeader("X-Accel-Buffering", "no");
     res.flushHeaders();
 
-    const write = (line: string) => res.write(line);
+    const write = (line: string) => {
+        res.write(line);
+    };
 
     const apiKeys = await getUserApiKeys(userId, db);
 

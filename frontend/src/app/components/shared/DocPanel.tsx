@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Download, Loader2 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { authHeader } from "@/lib/mikeAuth";
 import { applyOptimisticResolution } from "../assistant/EditCard";
 import { DocView } from "./DocView";
 import { DocxView } from "./DocxView";
@@ -355,10 +355,6 @@ function EditResolveButtons({
                 );
             }
             try {
-                const {
-                    data: { session },
-                } = await supabase.auth.getSession();
-                const token = session?.access_token;
                 const apiBase =
                     process.env.NEXT_PUBLIC_API_BASE_URL ??
                     "http://localhost:3001";
@@ -366,9 +362,7 @@ function EditResolveButtons({
                     `${apiBase}/single-documents/${edit.document_id}/edits/${edit.edit_id}/${verb}`,
                     {
                         method: "POST",
-                        headers: token
-                            ? { Authorization: `Bearer ${token}` }
-                            : undefined,
+                        headers: authHeader(),
                     },
                 );
                 if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -457,10 +451,6 @@ function DownloadButton({
         if (busy || isReloading) return;
         setBusy(true);
         try {
-            const {
-                data: { session },
-            } = await supabase.auth.getSession();
-            const token = session?.access_token;
             const apiBase =
                 process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
             const qs = versionId
@@ -468,9 +458,7 @@ function DownloadButton({
                 : "";
             const resp = await fetch(
                 `${apiBase}/single-documents/${documentId}/docx${qs}`,
-                {
-                    headers: token ? { Authorization: `Bearer ${token}` } : {},
-                },
+                { headers: authHeader() },
             );
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             const blob = await resp.blob();

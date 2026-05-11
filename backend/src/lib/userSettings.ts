@@ -1,3 +1,11 @@
+// Wave 3 cleanup: API keys live in `~/.mike/secrets.enc` (managed by
+// `lib/aiKeys.ts`). The legacy `user_profiles.claude_api_key` /
+// `gemini_api_key` columns are no longer read or written from anywhere.
+//
+// This module preserves its old export surface so chat / tabular routes
+// don't have to change — it just sources the keys from `aiKeys.ts` and
+// the lightweight `tabular_model` preference from the SQLite shim.
+
 import { createServerSupabase } from "./supabase";
 import {
     resolveModel,
@@ -5,6 +13,7 @@ import {
     DEFAULT_TABULAR_MODEL,
     type UserApiKeys,
 } from "./llm";
+import { getUserAiKeys } from "./aiKeys";
 
 export type UserModelSettings = {
     title_model: string;
@@ -22,6 +31,14 @@ function resolveTitleModel(apiKeys: UserApiKeys): string {
     return DEFAULT_TITLE_MODEL;
 }
 
+async function fetchApiKeys(userId: string): Promise<UserApiKeys> {
+    const k = await getUserAiKeys(userId);
+    return {
+        claude: k.claude_api_key ?? null,
+        gemini: k.gemini_api_key ?? null,
+    };
+}
+
 export async function getUserModelSettings(
     userId: string,
     db?: ReturnType<typeof createServerSupabase>,
@@ -29,14 +46,11 @@ export async function getUserModelSettings(
     const client = db ?? createServerSupabase();
     const { data } = await client
         .from("user_profiles")
-        .select("tabular_model, claude_api_key, gemini_api_key")
+        .select("tabular_model")
         .eq("user_id", userId)
         .single();
 
-    const api_keys: UserApiKeys = {
-        claude: data?.claude_api_key ?? null,
-        gemini: data?.gemini_api_key ?? null,
-    };
+    const api_keys = await fetchApiKeys(userId);
 
     return {
         title_model: resolveTitleModel(api_keys),
@@ -47,16 +61,7 @@ export async function getUserModelSettings(
 
 export async function getUserApiKeys(
     userId: string,
-    db?: ReturnType<typeof createServerSupabase>,
+    _db?: ReturnType<typeof createServerSupabase>,
 ): Promise<UserApiKeys> {
-    const client = db ?? createServerSupabase();
-    const { data } = await client
-        .from("user_profiles")
-        .select("claude_api_key, gemini_api_key")
-        .eq("user_id", userId)
-        .single();
-    return {
-        claude: data?.claude_api_key ?? null,
-        gemini: data?.gemini_api_key ?? null,
-    };
+    return fetchApiKeys(userId);
 }

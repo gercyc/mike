@@ -139,7 +139,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
             files: files.length > 0 ? files : undefined,
             workflow: wf ?? undefined,
             model,
-        });
+        } as MikeMessage);
     };
 
     const handleActionClick = () => {

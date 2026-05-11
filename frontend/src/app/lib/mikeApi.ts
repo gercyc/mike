@@ -1,9 +1,9 @@
 /**
  * Mike API client — all requests to the Node.js backend.
- * Attaches the Supabase auth token for user authentication.
+ * Attaches the local-password session token for user authentication.
  */
 
-import { supabase } from "@/lib/supabase";
+import { authHeader, handleUnauthorized } from "@/lib/mikeAuth";
 import type {
     AssistantEvent,
     MikeChat,
@@ -38,11 +38,7 @@ const API_BASE =
     process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
 
 async function getAuthHeader(): Promise<Record<string, string>> {
-    const {
-        data: { session },
-    } = await supabase.auth.getSession();
-    if (!session?.access_token) return {};
-    return { Authorization: `Bearer ${session.access_token}` };
+    return authHeader();
 }
 
 async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
@@ -59,6 +55,7 @@ async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
     });
 
     if (!response.ok) {
+        if (response.status === 401) handleUnauthorized();
         const detail = await response.text();
         throw new Error(detail || `API error: ${response.status}`);
     }

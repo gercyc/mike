@@ -1,15 +1,30 @@
 "use client";
 
+// Local profile context. The original implementation was backed by a
+// Supabase `user_profiles` table; the local-mode rewrite replaces that with
+// localStorage-backed preferences. We keep the same shape so the UI doesn't
+// have to change.
+//
+// AI keys live in the encrypted `~/.mike/secrets.enc` file and are managed
+// via `/user/ai-keys`. The `claudeApiKey` / `geminiApiKey` fields exposed
+// here are presence sentinels only ("•" if set, null otherwise) — never the
+// actual key material. Existing consumers only check truthiness, so this
+// keeps them working without leaking secrets to localStorage.
+
 import React, {
     createContext,
+    useCallback,
     useContext,
     useEffect,
     useState,
     ReactNode,
-    useCallback,
 } from "react";
-import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
+import { authHeader } from "@/lib/mikeAuth";
+
+const API_BASE =
+    process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || "http://127.0.0.1:3001";
+const KEY_SENTINEL = "•";
 
 interface UserProfile {
     displayName: string | null;
@@ -44,203 +59,140 @@ const UserProfileContext = createContext<UserProfileContextType | undefined>(
     undefined,
 );
 
+const STORAGE_KEY = "mike.userProfile.v1";
+const MONTHLY_CREDIT_LIMIT = 999999; // unlimited in local mode
+
+function defaultProfile(): UserProfile {
+    const reset = new Date();
+    reset.setDate(reset.getDate() + 30);
+    return {
+        displayName: null,
+        organisation: null,
+        messageCreditsUsed: 0,
+        creditsResetDate: reset.toISOString(),
+        creditsRemaining: MONTHLY_CREDIT_LIMIT,
+        tier: "Local",
+        tabularModel: "gemini-3-flash-preview",
+        claudeApiKey: null,
+        geminiApiKey: null,
+    };
+}
+
+function readStorage(): UserProfile | null {
+    if (typeof window === "undefined") return null;
+    try {
+        const raw = window.localStorage.getItem(STORAGE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw) as Partial<UserProfile>;
+        // Strip any legacy plaintext keys that may be sitting in localStorage
+        // from earlier builds. Real keys live in the encrypted secrets file;
+        // we only ever expose presence sentinels here.
+        const { claudeApiKey: _drop1, geminiApiKey: _drop2, ...rest } = parsed;
+        void _drop1;
+        void _drop2;
+        return {
+            ...defaultProfile(),
+            ...rest,
+            claudeApiKey: null,
+            geminiApiKey: null,
+        };
+    } catch {
+        return null;
+    }
+}
+
+function writeStorage(p: UserProfile): void {
+    if (typeof window === "undefined") return;
+    try {
+        // Never persist the AI-key fields — they're populated at runtime from
+        // /user/ai-keys, not from localStorage.
+        const { claudeApiKey: _k1, geminiApiKey: _k2, ...persistable } = p;
+        void _k1;
+        void _k2;
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(persistable));
+    } catch {
+        /* ignore */
+    }
+}
+
+async function fetchAiKeyPresence(): Promise<{
+    claudeApiKey: string | null;
+    geminiApiKey: string | null;
+}> {
+    try {
+        const res = await fetch(`${API_BASE}/user/ai-keys`, {
+            headers: authHeader(),
+            credentials: "include",
+        });
+        if (!res.ok) return { claudeApiKey: null, geminiApiKey: null };
+        const data = (await res.json()) as Record<
+            string,
+            { enabled?: boolean; masked?: string | null } | undefined
+        >;
+        // Backend keys by the company name ("anthropic"), the UI keys by
+        // the model family ("claude") — translate at this seam.
+        const anthropic = data?.anthropic;
+        const gemini = data?.gemini;
+        return {
+            claudeApiKey: anthropic?.enabled ? KEY_SENTINEL : null,
+            geminiApiKey: gemini?.enabled ? KEY_SENTINEL : null,
+        };
+    } catch {
+        return { claudeApiKey: null, geminiApiKey: null };
+    }
+}
+
 export function UserProfileProvider({ children }: { children: ReactNode }) {
-    const { user, isAuthenticated } = useAuth();
+    const { isAuthenticated } = useAuth();
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
 
-    const loadProfile = useCallback(async (userId: string) => {
-        try {
-            const { data, error } = await supabase
-                .from("user_profiles")
-                .select("*")
-                .eq("user_id", userId)
-                .single();
-
-            // Define credit limit constant
-            const MONTHLY_CREDIT_LIMIT = 999999; // temporarily unlimited
-
-            // Calculate a default future reset date (30 days from now)
-            const futureResetDate = new Date();
-            futureResetDate.setDate(futureResetDate.getDate() + 30);
-            const defaultResetDateStr = futureResetDate.toISOString();
-
-            if (error) {
-                // Set fallback profile data if profile doesn't exist
-                setProfile({
-                    displayName: null,
-                    organisation: null,
-                    messageCreditsUsed: 0,
-                    creditsResetDate: defaultResetDateStr,
-                    creditsRemaining: MONTHLY_CREDIT_LIMIT,
-                    tier: "Free",
-                    tabularModel: "gemini-3-flash-preview",
-                    claudeApiKey: null,
-                    geminiApiKey: null,
-                });
-                return;
-            }
-
-            // Use fetched data to update profile state
-            if (data) {
-                let creditsUsed = data.message_credits_used;
-                let resetDate = data.credits_reset_date;
-                let creditsRemaining = MONTHLY_CREDIT_LIMIT - creditsUsed;
-                let shouldUpdateDb = false;
-
-                // Check if credits have expired and need reset
-                if (resetDate && new Date() > new Date(resetDate)) {
-                    // Calculate new reset date
-                    const newResetDate = new Date();
-                    newResetDate.setDate(newResetDate.getDate() + 30);
-                    resetDate = newResetDate.toISOString();
-                    creditsUsed = 0;
-                    creditsRemaining = MONTHLY_CREDIT_LIMIT;
-                    shouldUpdateDb = true;
-                }
-
-                // 1. Update local state immediately
-                setProfile({
-                    displayName: data.display_name,
-                    organisation: data.organisation ?? null,
-                    messageCreditsUsed: creditsUsed,
-                    creditsResetDate: resetDate,
-                    creditsRemaining: creditsRemaining,
-                    tier: data.tier || "Free",
-                    tabularModel:
-                        data.tabular_model || "gemini-3-flash-preview",
-                    claudeApiKey: data.claude_api_key ?? null,
-                    geminiApiKey: data.gemini_api_key ?? null,
-                });
-
-                // 2. Update database in background if needed
-                if (shouldUpdateDb) {
-                    supabase
-                        .from("user_profiles")
-                        .update({
-                            message_credits_used: 0,
-                            credits_reset_date: resetDate,
-                            updated_at: new Date().toISOString(),
-                        })
-                        .eq("user_id", userId)
-                        .then(({ error }) => {
-                            if (error)
-                                console.error(
-                                    "Failed to auto-reset credits",
-                                    error,
-                                );
-                        });
-                }
-            }
-        } catch (e) {
-            // Calculate a default future reset date for fallback
-            const futureResetDate = new Date();
-            futureResetDate.setDate(futureResetDate.getDate() + 30);
-
-            // Set fallback profile data on exception
-            setProfile({
-                displayName: null,
-                organisation: null,
-                messageCreditsUsed: 0,
-                creditsResetDate: futureResetDate.toISOString(),
-                creditsRemaining: 999999, // temporarily unlimited
-                tier: "Free",
-                tabularModel: "gemini-3-flash-preview",
-                claudeApiKey: null,
-                geminiApiKey: null,
-            });
-        } finally {
-            setLoading(false);
-        }
+    const loadProfile = useCallback(async () => {
+        setLoading(true);
+        const stored = readStorage() ?? defaultProfile();
+        const presence = await fetchAiKeyPresence();
+        setProfile({ ...stored, ...presence });
+        setLoading(false);
     }, []);
 
     useEffect(() => {
-        if (isAuthenticated && user) {
-            setLoading(true);
-            loadProfile(user.id);
+        if (isAuthenticated) {
+            loadProfile();
         } else {
             setProfile(null);
             setLoading(false);
         }
-    }, [isAuthenticated, user, loadProfile]);
+    }, [isAuthenticated, loadProfile]);
+
+    const updateField = useCallback(
+        async <K extends keyof UserProfile>(
+            key: K,
+            value: UserProfile[K],
+        ): Promise<boolean> => {
+            setProfile((prev) => {
+                const base = prev ?? defaultProfile();
+                const next = { ...base, [key]: value };
+                writeStorage(next);
+                return next;
+            });
+            return true;
+        },
+        [],
+    );
 
     const updateDisplayName = useCallback(
-        async (displayName: string): Promise<boolean> => {
-            if (!user) {
-                return false;
-            }
-
-            try {
-                const { error } = await supabase
-                    .from("user_profiles")
-                    .update({
-                        display_name: displayName,
-                        updated_at: new Date().toISOString(),
-                    })
-                    .eq("user_id", user.id);
-
-                if (error) {
-                    throw error;
-                }
-
-                setProfile((prev) => (prev ? { ...prev, displayName } : null));
-                return true;
-            } catch {
-                return false;
-            }
-        },
-        [user],
+        (displayName: string) => updateField("displayName", displayName),
+        [updateField],
     );
 
     const updateOrganisation = useCallback(
-        async (organisation: string): Promise<boolean> => {
-            if (!user) return false;
-            try {
-                const { error } = await supabase
-                    .from("user_profiles")
-                    .update({
-                        organisation,
-                        updated_at: new Date().toISOString(),
-                    })
-                    .eq("user_id", user.id);
-                if (error) throw error;
-                setProfile((prev) =>
-                    prev ? { ...prev, organisation } : null,
-                );
-                return true;
-            } catch {
-                return false;
-            }
-        },
-        [user],
+        (organisation: string) => updateField("organisation", organisation),
+        [updateField],
     );
 
     const updateModelPreference = useCallback(
-        async (
-            field: "tabularModel",
-            value: string,
-        ): Promise<boolean> => {
-            if (!user) return false;
-            const dbField = field === "tabularModel" ? "tabular_model" : "";
-            if (!dbField) return false;
-            try {
-                const { error } = await supabase
-                    .from("user_profiles")
-                    .update({
-                        [dbField]: value,
-                        updated_at: new Date().toISOString(),
-                    })
-                    .eq("user_id", user.id);
-                if (error) throw error;
-                setProfile((prev) =>
-                    prev ? { ...prev, [field]: value } : null,
-                );
-                return true;
-            } catch {
-                return false;
-            }
-        },
-        [user],
+        (field: "tabularModel", value: string) => updateField(field, value),
+        [updateField],
     );
 
     const updateApiKey = useCallback(
@@ -248,79 +200,70 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
             provider: "claude" | "gemini",
             value: string | null,
         ): Promise<boolean> => {
-            if (!user) return false;
-            const dbField =
-                provider === "claude" ? "claude_api_key" : "gemini_api_key";
             const stateField =
                 provider === "claude" ? "claudeApiKey" : "geminiApiKey";
+            // The UI labels Anthropic's models as "Claude" (Claude Opus,
+            // Sonnet, …) but the backend's AiProvider enum is keyed by the
+            // company name. Map the friendlier label to the wire value so
+            // PUT /user/ai-keys/anthropic works.
+            const wireProvider = provider === "claude" ? "anthropic" : provider;
             const normalized = value?.trim() ? value.trim() : null;
             try {
-                const { error } = await supabase
-                    .from("user_profiles")
-                    .update({
-                        [dbField]: normalized,
-                        updated_at: new Date().toISOString(),
-                    })
-                    .eq("user_id", user.id);
-                if (error) throw error;
-                setProfile((prev) =>
-                    prev ? { ...prev, [stateField]: normalized } : null,
-                );
-                return true;
+                if (normalized) {
+                    const res = await fetch(
+                        `${API_BASE}/user/ai-keys/${wireProvider}`,
+                        {
+                            method: "PUT",
+                            headers: {
+                                "Content-Type": "application/json",
+                                ...authHeader(),
+                            },
+                            credentials: "include",
+                            body: JSON.stringify({
+                                enabled: true,
+                                key: normalized,
+                            }),
+                        },
+                    );
+                    if (!res.ok) return false;
+                } else {
+                    const res = await fetch(
+                        `${API_BASE}/user/ai-keys/${wireProvider}`,
+                        {
+                            method: "DELETE",
+                            headers: authHeader(),
+                            credentials: "include",
+                        },
+                    );
+                    if (!res.ok) return false;
+                }
             } catch {
                 return false;
             }
+            // Persist only the sentinel — never the plaintext key.
+            return updateField(stateField, normalized ? KEY_SENTINEL : null);
         },
-        [user],
+        [updateField],
     );
 
     const reloadProfile = useCallback(async () => {
-        if (user) {
-            await loadProfile(user.id);
-        }
-    }, [user, loadProfile]);
+        await loadProfile();
+    }, [loadProfile]);
 
     const incrementMessageCredits = useCallback(async (): Promise<boolean> => {
-        if (!user || !profile) {
-            return false;
-        }
-
-        // Check if user has credits remaining
-        if (profile.creditsRemaining <= 0) {
-            return false;
-        }
-
-        try {
-            const newCreditsUsed = profile.messageCreditsUsed + 1;
-
-            const { error } = await supabase
-                .from("user_profiles")
-                .update({
-                    message_credits_used: newCreditsUsed,
-                    updated_at: new Date().toISOString(),
-                })
-                .eq("user_id", user.id);
-
-            if (error) {
-                throw error;
-            }
-
-            // Update local state
-            setProfile((prev) =>
-                prev
-                    ? {
-                          ...prev,
-                          messageCreditsUsed: newCreditsUsed,
-                          creditsRemaining: 999999 - newCreditsUsed, // temporarily unlimited
-                      }
-                    : null,
-            );
-
-            return true;
-        } catch (err) {
-            return false;
-        }
-    }, [user, profile]);
+        setProfile((prev) => {
+            const base = prev ?? defaultProfile();
+            const used = base.messageCreditsUsed + 1;
+            const next: UserProfile = {
+                ...base,
+                messageCreditsUsed: used,
+                creditsRemaining: MONTHLY_CREDIT_LIMIT - used,
+            };
+            writeStorage(next);
+            return next;
+        });
+        return true;
+    }, []);
 
     return (
         <UserProfileContext.Provider

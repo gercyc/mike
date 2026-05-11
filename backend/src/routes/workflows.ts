@@ -1,15 +1,7 @@
 import { Router } from "express";
-import { createClient } from "@supabase/supabase-js";
 import { requireAuth } from "../middleware/auth";
 import { createServerSupabase } from "../lib/supabase";
-
-function getAdminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
-    process.env.SUPABASE_SECRET_KEY ?? "",
-    { auth: { autoRefreshToken: false, persistSession: false } },
-  );
-}
+import { BUILTIN_WORKFLOWS } from "../lib/builtinWorkflows";
 
 export const workflowsRouter = Router();
 
@@ -112,10 +104,11 @@ workflowsRouter.get("/", requireAuth, async (req, res) => {
         ? await db.from("user_profiles").select("user_id, display_name").in("user_id", sharerIds)
         : { data: [] };
 
-      // Fetch sharer emails via admin client
-      const admin = getAdminClient();
-      const { data: authData } = await admin.auth.admin.listUsers({ perPage: 1000 });
-      const authUsers = authData?.users ?? [];
+      // LOCAL-MIGRATION: single-user local mode — synthesize a stub auth
+      // users list with just the local user so the lookup below still works.
+      const authUsers: { id: string; email: string }[] = [
+        { id: "local", email: userEmail || "" },
+      ];
 
       sharedWorkflows = wfs.map((wf) => {
         const share = shares.find((s) => s.workflow_id === wf.id);
@@ -135,7 +128,29 @@ workflowsRouter.get("/", requireAuth, async (req, res) => {
   const ownWithFlag = (own ?? []).map((wf) =>
     withWorkflowAccess(wf, { allowEdit: true, isOwner: true }),
   );
-  res.json([...ownWithFlag, ...sharedWorkflows]);
+
+  // Built-in workflows live in source (BUILTIN_WORKFLOWS) rather than the
+  // database so they always ship with the app and can't be accidentally
+  // deleted. They're typed as "assistant" workflows; surface them here so
+  // the Word add-in's Workflows tab and picker see them alongside the
+  // user's own. Read-only — allow_edit / is_owner are both false.
+  const wantType = type ?? "assistant";
+  const builtIns =
+    wantType === "assistant" || !type
+      ? BUILTIN_WORKFLOWS.map((wf) => ({
+          id: wf.id,
+          title: wf.title,
+          prompt_md: wf.prompt_md,
+          type: "assistant",
+          is_system: true,
+          user_id: null as string | null,
+          allow_edit: false,
+          is_owner: false,
+          shared_by_name: null,
+        }))
+      : [];
+
+  res.json([...builtIns, ...ownWithFlag, ...sharedWorkflows]);
 });
 
 // POST /workflows

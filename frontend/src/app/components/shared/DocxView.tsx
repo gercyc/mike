@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { MikeIcon } from "@/components/chat/mike-icon";
 import { useFetchDocxBytes } from "@/app/hooks/useFetchDocxBytes";
-import { supabase } from "@/lib/supabase";
+import { authHeader } from "@/lib/mikeAuth";
 import {
     clearDocxQuoteHighlights,
     highlightDocxQuote,
@@ -144,10 +144,6 @@ async function tagWIdsOnRenderedDom(
     versionId: string | null | undefined,
 ): Promise<void> {
     try {
-        const {
-            data: { session },
-        } = await supabase.auth.getSession();
-        const token = session?.access_token;
         const apiBase =
             process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
         const qs = versionId
@@ -155,7 +151,7 @@ async function tagWIdsOnRenderedDom(
             : "";
         const resp = await fetch(
             `${apiBase}/single-documents/${documentId}/tracked-change-ids${qs}`,
-            { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+            { headers: authHeader() },
         );
         if (!resp.ok) {
             console.warn(
