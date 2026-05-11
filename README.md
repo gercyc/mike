@@ -1,8 +1,7 @@
 # Mike
 
-An open-source alternative to Harvey and Legora: a Word Addin and a full local-first application with a Bun backend. Mike brings AI-powered legal document analysis to the tools lawyers already use every day.
+An open-source alternative to Harvey and Legora: a Word Addin and a full local-first application with a Bun backend. 
 
-## Why Mike?
 
 ### Why a Word Addin?
 
@@ -34,7 +33,7 @@ This repo contains multiple packages: backend, frontend, word-addin, electron, a
 - `frontend/` - Next.js desktop application
 - `electron/` - Electron app wrapper
 - `word-addin/` - Microsoft Word Addin
-- `packages/mcp-server/` - Model Context Protocol server
+- `packages/mcp-server/` - Model Context Protocol server - to be developed
 - `packages/shared/` - Shared types and utilities
 
 ## Setup
