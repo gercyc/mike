@@ -1,5 +1,5 @@
 {
-  "name": "@mike/electron",
+  "name": "mike-electron",
   "productName": "Mike",
   "version": "1.0.0",
   "private": true,
@@ -13,13 +13,14 @@
     "dist": "electron-builder"
   },
   "devDependencies": {
-    "electron": "^33.2.0",
-    "electron-builder": "^25.1.8",
+    "electron": "^42.2.0",
+    "electron-builder": "^26.8.1",
     "sharp": "^0.33.5"
   },
   "build": {
     "appId": "com.mikelegal.desktop",
     "productName": "Mike",
+    "afterPack": "./scripts/afterPack.js",
     "files": [
       "main.js",
       "icon.png",
@@ -35,7 +36,8 @@
       },
       {
         "from": "../frontend/.next",
-        "to": "frontend/.next"
+        "to": "frontend/.next",
+        "filter": ["**/*", "!standalone/node_modules/.bun/**", "!standalone/node_modules/.cache/**", "!standalone/frontend/node_modules/**"]
       },
       {
         "from": "../frontend/public",

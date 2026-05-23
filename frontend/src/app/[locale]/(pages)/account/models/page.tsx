@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AlertCircle, Check, ChevronDown, Eye, EyeOff, Loader2, Search } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -46,6 +47,7 @@ const API_KEY_FIELDS = [
 ] as const;
 
 export default function ModelsAndApiKeysPage() {
+    const t = useTranslations("account.modelsPage");
     const { profile, updateModelPreference, updateApiKey } = useUserProfile();
 
     return (
@@ -54,17 +56,16 @@ export default function ModelsAndApiKeysPage() {
             <div className="pb-6">
                 <div className="flex items-center gap-2 mb-4">
                     <h2 className="text-2xl font-medium font-serif">
-                        Model Preferences
+                        {t("modelPreferences")}
                     </h2>
                 </div>
                 <div className="space-y-4 max-w-md">
                     <div>
                         <label className="text-sm text-gray-600 block mb-2">
-                            Tabular review model
+                            {t("tabularReviewModel")}
                         </label>
                         <p className="text-xs text-gray-400 mb-2">
-                            We recommend using a smaller model for tabular
-                            reviews to reduce token costs.
+                            {t("tabularReviewModelHint")}
                         </p>
                         <TabularModelDropdown
                             value={
@@ -84,17 +85,14 @@ export default function ModelsAndApiKeysPage() {
             <div className="py-6">
                 <div className="flex items-center gap-2 mb-2">
                     <h2 className="text-2xl font-medium font-serif">
-                        API Keys
+                        {t("apiKeys")}
                     </h2>
                 </div>
                 <p className="text-sm text-gray-500 mb-4 max-w-xl">
-                    You must provide your own API keys for the app to work or
-                    add your API keys into the .env file if you are running your
-                    own instance of Mike.
+                    {t("apiKeysDescription")}
                 </p>
                 <p className="text-xs text-gray-400 mb-4 max-w-xl">
-                    Title generation automatically routes to the cheapest
-                    configured provider model.
+                    {t("apiKeysTitleHint")}
                 </p>
                 <div className="space-y-4 max-w-xl">
                     {API_KEY_FIELDS.map((field) => (
@@ -145,6 +143,7 @@ function TabularModelDropdown({
     onChange: (id: string) => void;
     apiKeys?: ApiKeyState;
 }) {
+    const t = useTranslations("account.modelsPage");
     const [isOpen, setIsOpen] = useState(false);
     const [orSearch, setOrSearch] = useState("");
     const searchRef = useRef<HTMLInputElement>(null);
@@ -259,7 +258,7 @@ function TabularModelDropdown({
                         {orState.status === "loading" && (
                             <div className="flex items-center gap-2 px-2 py-1.5 text-xs text-gray-400">
                                 <Loader2 className="h-3 w-3 animate-spin" />
-                                Loading models…
+                                {t("loadingModels")}
                             </div>
                         )}
                         {orState.status === "error" && (
@@ -275,7 +274,7 @@ function TabularModelDropdown({
                                         <input
                                             ref={searchRef}
                                             type="text"
-                                            placeholder="Search models…"
+                                            placeholder={t("searchModels")}
                                             value={orSearch}
                                             onChange={(e) => setOrSearch(e.target.value)}
                                             onKeyDown={(e) => e.stopPropagation()}
@@ -286,7 +285,7 @@ function TabularModelDropdown({
                                 <div className="overflow-y-auto min-h-0 flex-1">
                                     {filteredOrModels.length === 0 ? (
                                         <div className="px-2 py-2 text-xs text-gray-400">
-                                            No models match "{orSearch}"
+                                            {t("noModelsMatch", { query: orSearch })}
                                         </div>
                                     ) : (
                                         filteredOrModels.map((m) => (
@@ -334,6 +333,7 @@ function ApiKeyField({
     onSave: (value: string) => Promise<boolean>;
     onRemove: () => Promise<boolean>;
 }) {
+    const t = useTranslations("account.modelsPage");
     const [value, setValue] = useState("");
     const [reveal, setReveal] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -368,22 +368,16 @@ function ApiKeyField({
     return (
         <div>
             <label className="text-sm text-gray-600 block mb-2">{label}</label>
-            {isServerConfigured && (
+            {isServerConfigured && !hasSavedKey && (
                 <div className="mb-2 rounded-md border border-blue-100 bg-blue-50 px-3 py-2">
                     <p className="text-xs text-blue-800">
-                        A server .env key is configured for this provider.
-                        Browser API-key edits are disabled.
+                        {t("serverEnvKeyConfigured")}
                     </p>
-                    {hasSavedKey && (
-                        <p className="mt-1 text-xs text-blue-800">
-                            The server key will be used for this provider.
-                        </p>
-                    )}
                 </div>
             )}
             {hasSavedKey && !isServerConfigured && (
                 <p className="text-xs text-gray-500 mb-2">
-                    A key is saved. Paste a new key to replace it.
+                    {t("savedKeyReplace")}
                 </p>
             )}
             <div className="flex gap-2">
@@ -393,23 +387,21 @@ function ApiKeyField({
                         value={value}
                         onChange={(e) => setValue(e.target.value)}
                         placeholder={
-                            isServerConfigured
-                                ? "Server .env key configured"
-                                : hasSavedKey
-                                  ? "Saved key hidden"
+                            hasSavedKey
+                                ? t("savedKeyHidden")
+                                : isServerConfigured
+                                  ? t("serverEnvKeyActive")
                                   : placeholder
                         }
                         className="pr-10"
                         autoComplete="off"
                         spellCheck={false}
-                        disabled={isServerConfigured}
                     />
                     <button
                         type="button"
                         onClick={() => setReveal((r) => !r)}
-                        disabled={isServerConfigured}
-                        className="absolute inset-y-0 right-2 flex items-center text-gray-400 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-40"
-                        aria-label={reveal ? "Hide key" : "Show key"}
+                        className="absolute inset-y-0 right-2 flex items-center text-gray-400 hover:text-gray-600"
+                        aria-label={reveal ? t("hideKey") : t("showKey")}
                     >
                         {reveal ? (
                             <EyeOff className="h-4 w-4" />
@@ -420,18 +412,18 @@ function ApiKeyField({
                 </div>
                 <Button
                     onClick={handleSave}
-                    disabled={isServerConfigured || isSaving || !dirty || saved}
+                    disabled={isSaving || !dirty || saved}
                     className="min-w-[80px] transition-all bg-black hover:bg-gray-900 text-white"
                 >
                     {isSaving ? (
-                        "Saving..."
+                        t("saving")
                     ) : saved ? (
                         <>
                             <Check className="h-4 w-3" />
-                            Saved
+                            {t("saved")}
                         </>
                     ) : (
-                        "Save"
+                        t("save")
                     )}
                 </Button>
                 {hasSavedKey && !isServerConfigured && (
@@ -441,7 +433,7 @@ function ApiKeyField({
                         onClick={handleRemove}
                         disabled={isSaving}
                     >
-                        Remove
+                        {t("remove")}
                     </Button>
                 )}
             </div>

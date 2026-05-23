@@ -339,29 +339,38 @@ function buildMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
+function killProc(name, proc, force = false) {
+  if (proc.exitCode !== null) return;
+  try {
+    if (process.platform === "win32") {
+      // taskkill /F kills the whole process tree (/T) forcefully — required on
+      // Windows because SIGTERM/SIGKILL are not reliably delivered to child
+      // processes spawned by Node.js.
+      require("node:child_process").execSync(
+        `taskkill /F /T /PID ${proc.pid}`,
+        { stdio: "ignore" },
+      );
+    } else {
+      proc.kill(force ? "SIGKILL" : "SIGTERM");
+    }
+  } catch (e) {
+    console.warn(`[teardown] kill(${force ? "force" : "term"}) ${name}:`, e.message);
+  }
+}
+
 async function teardown() {
   for (const { name, proc } of children) {
-    if (!proc.killed) {
-      try {
-        proc.kill("SIGTERM");
-      } catch (e) {
-        console.warn(`[teardown] SIGTERM ${name}:`, e.message);
-      }
+    killProc(name, proc, false);
+  }
+  // Give them up to 5s to exit cleanly (Unix only — Windows is already forced).
+  if (process.platform !== "win32") {
+    const deadline = Date.now() + 5000;
+    while (Date.now() < deadline) {
+      if (children.every(({ proc }) => proc.exitCode !== null)) break;
+      await new Promise((r) => setTimeout(r, 100));
     }
-  }
-  // Give them up to 5s to exit cleanly.
-  const deadline = Date.now() + 5000;
-  while (Date.now() < deadline) {
-    if (children.every(({ proc }) => proc.exitCode !== null || proc.killed)) break;
-    await new Promise((r) => setTimeout(r, 100));
-  }
-  for (const { name, proc } of children) {
-    if (proc.exitCode === null) {
-      try {
-        proc.kill("SIGKILL");
-      } catch (e) {
-        console.warn(`[teardown] SIGKILL ${name}:`, e.message);
-      }
+    for (const { name, proc } of children) {
+      killProc(name, proc, true);
     }
   }
   children.length = 0;

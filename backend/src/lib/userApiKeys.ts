@@ -123,7 +123,7 @@ export async function getUserApiKeyStatus(
 
     for (const row of data ?? []) {
         const provider = normalizeApiKeyProvider(String(row.provider));
-        if (provider && !status[provider]) {
+        if (provider) {
             status[provider] = true;
             status.sources[provider] = "user";
         }
@@ -152,8 +152,8 @@ export async function getUserApiKeys(
     for (const row of (data ?? []) as EncryptedKeyRow[]) {
         const provider = normalizeApiKeyProvider(row.provider);
         if (!provider) continue;
-        if (apiKeys[provider]?.trim()) continue;
-        apiKeys[provider] = decrypt(row);
+        const decrypted = decrypt(row);
+        if (decrypted?.trim()) apiKeys[provider] = decrypted;
     }
 
     return apiKeys;

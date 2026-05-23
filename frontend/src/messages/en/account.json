@@ -1,5 +1,10 @@
 {
   "title": "Account Settings",
+  "nav": {
+    "general": "General",
+    "models": "Models & API Keys",
+    "mcp": "MCP Server"
+  },
   "models": {
     "title": "Model Preferences",
     "tabularReviewModel": "Tabular review model",
@@ -39,5 +44,43 @@
     "confirm": "Are you sure? This will permanently delete your account.",
     "deleting": "Deleting…",
     "deleteAccount": "Delete Account"
+  },
+  "modelsPage": {
+    "modelPreferences": "Model Preferences",
+    "tabularReviewModel": "Tabular review model",
+    "tabularReviewModelHint": "We recommend using a smaller model for tabular reviews to reduce token costs.",
+    "apiKeys": "API Keys",
+    "apiKeysDescription": "You must provide your own API keys for the app to work or add your API keys into the .env file if you are running your own instance of Mike.",
+    "apiKeysTitleHint": "Title generation automatically routes to the cheapest configured provider model.",
+    "savedKeyHidden": "Saved key hidden (overrides server .env)",
+    "serverEnvKeyActive": "Server .env key active — paste to override",
+    "serverEnvKeyConfigured": "A server .env key is configured for this provider. You can override it by saving your own key below.",
+    "savedKeyReplace": "A key is saved. Paste a new key to replace it.",
+    "saving": "Saving...",
+    "saved": "Saved",
+    "save": "Save",
+    "remove": "Remove",
+    "showKey": "Show key",
+    "hideKey": "Hide key",
+    "searchModels": "Search models…",
+    "loadingModels": "Loading models…",
+    "noModelsMatch": "No models match \"{query}\""
+  },
+  "mcp": {
+    "title": "MCP Server",
+    "description": "Connect Mike to other AI tools using the Model Context Protocol. Issue a token below, paste it into your MCP client, and Mike's projects, documents, chats, and workflows become available there.",
+    "saveTokenWarning": "Save this token now — it won't be shown again.",
+    "claudeDesktopConfig": "Claude Desktop config (~/Library/Application Support/Claude/claude_desktop_config.json):",
+    "done": "Done",
+    "issueNewToken": "Issue new token",
+    "tokenLabelPlaceholder": "Label, e.g. \"Claude Desktop on MacBook\"",
+    "issue": "Issue",
+    "activeTokens": "Active tokens",
+    "noTokens": "No tokens yet. Issue one above to connect Mike to an MCP client.",
+    "revokeConfirm": "Revoke this token? Any agent using it will be disconnected.",
+    "revoke": "Revoke",
+    "lastUsed": "last used {date}",
+    "neverUsed": "never used",
+    "loading": "Loading…"
   }
 }

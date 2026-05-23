@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface TabDef {
@@ -11,19 +12,21 @@ interface TabDef {
     href: string;
 }
 
-const TABS: TabDef[] = [
-    { id: "general", label: "General", href: "/account" },
-    { id: "models", label: "Models & API Keys", href: "/account/models" },
-];
-
 export default function AccountLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
+    const t = useTranslations("account.nav");
     const router = useRouter();
     const pathname = usePathname();
     const { isAuthenticated, authLoading } = useAuth();
+
+    const TABS: TabDef[] = [
+        { id: "general", label: t("general"), href: "/account" },
+        { id: "models", label: t("models"), href: "/account/models" },
+        { id: "mcp", label: t("mcp"), href: "/account/mcp" },
+    ];
 
     useEffect(() => {
         if (!authLoading && !isAuthenticated) {

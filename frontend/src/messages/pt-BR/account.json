@@ -1,5 +1,10 @@
 {
   "title": "Configurações da Conta",
+  "nav": {
+    "general": "Geral",
+    "models": "Modelos e Chaves de API",
+    "mcp": "Servidor MCP"
+  },
   "models": {
     "title": "Preferências de Modelos",
     "tabularReviewModel": "Modelo de revisão tabular",
@@ -39,5 +44,43 @@
     "confirm": "Tem certeza? Isso excluirá permanentemente sua conta.",
     "deleting": "Excluindo…",
     "deleteAccount": "Excluir Conta"
+  },
+  "modelsPage": {
+    "modelPreferences": "Preferências de Modelos",
+    "tabularReviewModel": "Modelo de revisão tabular",
+    "tabularReviewModelHint": "Recomendamos usar um modelo menor para revisões tabulares para reduzir custos de tokens.",
+    "apiKeys": "Chaves de API",
+    "apiKeysDescription": "Você deve fornecer suas próprias chaves de API para que o aplicativo funcione, ou adicioná-las ao arquivo .env se estiver rodando sua própria instância do Mike.",
+    "apiKeysTitleHint": "A geração de títulos é roteada automaticamente para o modelo do provedor mais barato configurado.",
+    "savedKeyHidden": "Chave salva oculta (sobrepõe o .env do servidor)",
+    "serverEnvKeyActive": "Chave do .env do servidor ativa — cole para substituir",
+    "serverEnvKeyConfigured": "Uma chave do .env do servidor está configurada para este provedor. Você pode substituí-la salvando sua própria chave abaixo.",
+    "savedKeyReplace": "Uma chave está salva. Cole uma nova chave para substituí-la.",
+    "saving": "Salvando...",
+    "saved": "Salvo",
+    "save": "Salvar",
+    "remove": "Remover",
+    "showKey": "Mostrar chave",
+    "hideKey": "Ocultar chave",
+    "searchModels": "Buscar modelos…",
+    "loadingModels": "Carregando modelos…",
+    "noModelsMatch": "Nenhum modelo corresponde a \"{query}\""
+  },
+  "mcp": {
+    "title": "Servidor MCP",
+    "description": "Conecte o Mike a outras ferramentas de IA usando o Model Context Protocol. Emita um token abaixo, cole-o no seu cliente MCP e os projetos, documentos, conversas e fluxos de trabalho do Mike ficarão disponíveis lá.",
+    "saveTokenWarning": "Salve este token agora — ele não será exibido novamente.",
+    "claudeDesktopConfig": "Configuração do Claude Desktop (~/Library/Application Support/Claude/claude_desktop_config.json):",
+    "done": "Concluído",
+    "issueNewToken": "Emitir novo token",
+    "tokenLabelPlaceholder": "Rótulo, ex.: \"Claude Desktop no MacBook\"",
+    "issue": "Emitir",
+    "activeTokens": "Tokens ativos",
+    "noTokens": "Nenhum token ainda. Emita um acima para conectar o Mike a um cliente MCP.",
+    "revokeConfirm": "Revogar este token? Qualquer agente que o use será desconectado.",
+    "revoke": "Revogar",
+    "lastUsed": "último uso em {date}",
+    "neverUsed": "nunca usado",
+    "loading": "Carregando…"
   }
 }
