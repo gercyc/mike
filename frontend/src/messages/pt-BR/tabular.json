@@ -1,0 +1,37 @@
+{
+  "title": "Revisões Tabulares",
+  "newReview": "Nova Revisão Tabular",
+  "noReviews": "Nenhuma revisão tabular ainda",
+  "table": {
+    "document": "Documento",
+    "status": "Status",
+    "actions": "Ações",
+    "generating": "Gerando...",
+    "pending": "Pendente",
+    "done": "Concluído",
+    "error": "Erro"
+  },
+  "column": {
+    "add": "Adicionar Coluna",
+    "edit": "Editar Coluna",
+    "delete": "Excluir Coluna",
+    "name": "Nome da coluna",
+    "prompt": "Prompt",
+    "format": "Formato",
+    "regenerate": "Regenerar"
+  },
+  "sidePanel": {
+    "title": "Detalhes",
+    "noSelection": "Selecione uma célula para ver os detalhes"
+  },
+  "chat": {
+    "placeholder": "Pergunte sobre este documento...",
+    "send": "Enviar"
+  },
+  "modal": {
+    "create": "Criar Revisão Tabular",
+    "name": "Nome da revisão",
+    "selectWorkflow": "Selecionar workflow",
+    "selectDocuments": "Selecionar documentos"
+  }
+}

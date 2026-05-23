@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, Upload, Search, Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import {
     uploadStandaloneDocument,
     uploadProjectDocument,
@@ -34,6 +35,7 @@ export function AddDocumentsModal({
     allowMultiple = true,
     projectId,
 }: Props) {
+    const t = useTranslations("modals.addDocuments");
     const { loading, standaloneDocuments, projects } = useDirectoryData(open);
     const { user } = useAuth();
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -284,7 +286,7 @@ export function AddDocumentsModal({
                             ) : (
                                 <Upload className="h-3.5 w-3.5" />
                             )}
-                            {uploading ? "Uploading…" : "Upload"}
+                            {uploading ? t("uploading") : t("upload")}
                         </button>
                     </div>
                     <div className="flex items-center gap-2">
@@ -306,6 +308,7 @@ export function AddDocumentsModal({
                         >
                             {uploading ? "Saving…" : "Confirm"}
                         </button>
+
                     </div>
                 </div>
             </div>

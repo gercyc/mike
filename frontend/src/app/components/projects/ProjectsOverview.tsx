@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Plus, FolderOpen, ChevronDown } from "lucide-react";
 import { HeaderSearchBtn } from "@/app/components/shared/HeaderSearchBtn";
 import { listProjects, updateProject, deleteProject } from "@/app/lib/mikeApi";
@@ -26,6 +27,7 @@ const CHECK_W = "w-8 shrink-0";
 const NAME_COL_W = "w-[300px] shrink-0";
 
 export function ProjectsOverview() {
+    const t = useTranslations("projects");
     const [projects, setProjects] = useState<MikeProject[]>([]);
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
@@ -207,7 +209,7 @@ export function ProjectsOverview() {
             {/* Page header */}
             <div className="mb-1 flex items-center justify-between px-4 py-3 md:px-10">
                 <h1 className="text-2xl font-medium font-serif text-gray-900">
-                    Projects
+                    {t("title")}
                 </h1>
                 <div className="flex items-center gap-2">
                     <HeaderSearchBtn

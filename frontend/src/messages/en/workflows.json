@@ -1,0 +1,37 @@
+{
+  "title": "Workflows",
+  "newWorkflow": "New Workflow",
+  "noWorkflows": "No workflows yet",
+  "builtin": "Built-in",
+  "custom": "Custom",
+  "practices": {
+    "all": "All Practices",
+    "generalTransactions": "General Transactions",
+    "ma": "M&A",
+    "finance": "Finance",
+    "realEstate": "Real Estate",
+    "litigation": "Litigation",
+    "employment": "Employment",
+    "corporate": "Corporate",
+    "ip": "Intellectual Property"
+  },
+  "modal": {
+    "create": "Create Workflow",
+    "edit": "Edit Workflow",
+    "share": "Share Workflow",
+    "delete": "Delete Workflow",
+    "name": "Workflow name",
+    "type": "Type",
+    "assistant": "Assistant",
+    "tabular": "Tabular Review",
+    "prompt": "Prompt",
+    "columns": "Columns"
+  },
+  "column": {
+    "add": "Add Column",
+    "name": "Column name",
+    "prompt": "Prompt",
+    "format": "Format"
+  },
+  "run": "Run Workflow"
+}

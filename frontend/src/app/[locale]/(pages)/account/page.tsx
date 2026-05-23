@@ -1,16 +1,21 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "@/i18n/navigation";
+import { useTranslations, useLocale } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LogOut, Check } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { deleteAccount } from "@/app/lib/mikeApi";
+import { setLocaleCookie } from "@/lib/locale";
 
 export default function AccountPage() {
+    const t = useTranslations("account");
     const router = useRouter();
+    const pathname = usePathname();
+    const currentLocale = useLocale();
     const { user, signOut } = useAuth();
     const { profile, updateDisplayName, updateOrganisation } = useUserProfile();
     const [displayName, setDisplayName] = useState("");
@@ -82,13 +87,14 @@ export default function AccountPage() {
             {/* Profile Settings */}
             <div className="pb-6">
                 <div className="flex items-center gap-2 mb-4">
-                    <h2 className="text-2xl font-medium font-serif">Profile</h2>
+                    <h2 className="text-2xl font-medium font-serif">{t("profile.title")}</h2>
                 </div>
                 <div className="space-y-4">
                     <div>
                         <label className="text-sm text-gray-600 block mb-2">
-                            Display Name
+                            {t("profile.name")}
                         </label>
+
                         <div className="flex gap-2">
                             <Input
                                 type="text"
@@ -119,7 +125,7 @@ export default function AccountPage() {
                     </div>
                     <div>
                         <label className="text-sm text-gray-600 block mb-2">
-                            Organisation
+                            {t("profile.organisation")}
                         </label>
                         <div className="flex gap-2">
                             <Input
@@ -156,10 +162,36 @@ export default function AccountPage() {
                     </div>
                     <div>
                         <label className="text-sm text-gray-600 block mb-2">
-                            Email
+                            {t("profile.email")}
                         </label>
                         <p className="text-base">{user?.email}</p>
                     </div>
+                </div>
+            </div>
+
+            {/* Language */}
+            <div className="py-6 border-t border-gray-100">
+                <div className="flex items-center gap-2 mb-4">
+                    <h2 className="text-2xl font-medium font-serif">
+                        {t("language.title")}
+                    </h2>
+                </div>
+                <div>
+                    <label className="text-sm text-gray-600 block mb-2">
+                        {t("language.label")}
+                    </label>
+                    <select
+                        value={currentLocale}
+                        onChange={(e) => {
+                            const newLocale = e.target.value;
+                            setLocaleCookie(newLocale);
+                            router.replace(pathname, { locale: newLocale });
+                        }}
+                        className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+                    >
+                        <option value="en">{t("language.en")}</option>
+                        <option value="pt-BR">{t("language.ptBR")}</option>
+                    </select>
                 </div>
             </div>
 
@@ -167,7 +199,7 @@ export default function AccountPage() {
             <div className="py-6">
                 <div className="flex items-center gap-2 mb-4">
                     <h2 className="text-2xl font-medium font-serif">
-                        Usage Plan
+                        {t("subscription.title")}
                     </h2>
                 </div>
                 <div>
@@ -180,7 +212,7 @@ export default function AccountPage() {
             {/* Actions */}
             <div className="py-6">
                 <h2 className="text-2xl font-medium font-serif mb-4">
-                    Actions
+                    {t("actions.title")}
                 </h2>
                 <Button
                     variant="outline"
@@ -188,24 +220,22 @@ export default function AccountPage() {
                     className="w-full sm:w-auto"
                 >
                     <LogOut className="h-4 w-4 mr-2" />
-                    Sign Out
+                    {t("actions.signOut")}
                 </Button>
             </div>
 
             {/* Danger Zone */}
             <div className="py-6">
                 <h2 className="text-2xl font-medium font-serif mb-1 text-red-600">
-                    Danger Zone
+                    {t("dangerZone.title")}
                 </h2>
                 <p className="text-sm text-gray-500 mb-4">
-                    Permanently delete your account and all associated data.
-                    This action cannot be undone.
+                    {t("dangerZone.description")}
                 </p>
                 {deleteConfirm ? (
                     <div className="rounded-lg border border-red-200 bg-red-50 p-4 space-y-3 max-w-sm">
                         <p className="text-sm font-medium text-red-700">
-                            Are you sure? This will permanently delete your
-                            account.
+                            {t("dangerZone.confirm")}
                         </p>
                         <div className="flex gap-2">
                             <Button
@@ -214,14 +244,14 @@ export default function AccountPage() {
                                 disabled={isDeleting}
                                 className="text-sm"
                             >
-                                Cancel
+                                {t("actions.cancel")}
                             </Button>
                             <Button
                                 onClick={handleDeleteAccount}
                                 disabled={isDeleting}
                                 className="text-sm bg-red-600 hover:bg-red-700 text-white"
                             >
-                                {isDeleting ? "Deleting…" : "Delete Account"}
+                                {isDeleting ? t("dangerZone.deleting") : t("dangerZone.deleteAccount")}
                             </Button>
                         </div>
                     </div>
@@ -231,7 +261,7 @@ export default function AccountPage() {
                         onClick={() => setDeleteConfirm(true)}
                         className="w-full sm:w-auto border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
                     >
-                        Delete Account
+                        {t("dangerZone.deleteAccount")}
                     </Button>
                 )}
             </div>

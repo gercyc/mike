@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { X, Upload } from "lucide-react";
 import { listDocumentVersions } from "@/app/lib/mikeApi";
 import type { MikeDocument } from "./types";
+import { useTranslations } from "next-intl";
 
 interface Props {
     open: boolean;
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function UploadNewVersionModal({ open, onClose, doc, onSubmit }: Props) {
+    const t = useTranslations("modals.uploadVersion");
     const [name, setName] = useState("");
     const [stagedFile, setStagedFile] = useState<File | null>(null);
     const [submitting, setSubmitting] = useState(false);
@@ -83,7 +85,7 @@ export function UploadNewVersionModal({ open, onClose, doc, onSubmit }: Props) {
                 {/* Header */}
                 <div className="flex items-center justify-between px-5 py-4">
                     <div className="text-xs text-gray-400">
-                        Upload new version · {doc.filename}
+                        {t("title")} · {doc.filename}
                     </div>
                     <button
                         onClick={onClose}
@@ -137,7 +139,7 @@ export function UploadNewVersionModal({ open, onClose, doc, onSubmit }: Props) {
                             className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50"
                         >
                             <Upload className="h-3.5 w-3.5" />
-                            {stagedFile ? "Change file" : "Upload"}
+                            {stagedFile ? "Change file" : t("selectFile")}
                         </button>
                     </div>
                     <div className="flex items-center gap-2">

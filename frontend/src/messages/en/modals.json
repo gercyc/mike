@@ -1,0 +1,38 @@
+{
+  "addDocuments": {
+    "title": "Add Documents",
+    "upload": "Upload files",
+    "dragDrop": "Drag and drop files here, or click to browse",
+    "supported": "Supported formats: PDF, DOCX, TXT, MD",
+    "uploading": "Uploading...",
+    "noFiles": "No files selected"
+  },
+  "apiKeyMissing": {
+    "title": "API Key Required",
+    "description": "Please add an API key to continue using this feature.",
+    "goToSettings": "Go to Settings"
+  },
+  "ownerOnly": {
+    "title": "Owner Access Required",
+    "description": "Only the owner can perform this action."
+  },
+  "deleteChats": {
+    "title": "Delete All Chats",
+    "description": "Are you sure you want to delete all chat history? This action cannot be undone.",
+    "confirm": "Delete All"
+  },
+  "creditsExhausted": {
+    "title": "Credits Exhausted",
+    "description": "You have used all your available credits.",
+    "upgrade": "Upgrade Plan"
+  },
+  "uploadVersion": {
+    "title": "Upload New Version",
+    "description": "Upload a new version of this document.",
+    "selectFile": "Select file"
+  },
+  "docView": {
+    "title": "Document Preview",
+    "noPreview": "Preview not available"
+  }
+}

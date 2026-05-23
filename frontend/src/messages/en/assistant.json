@@ -1,0 +1,22 @@
+{
+  "initialView": {
+    "title": "How can I help you today?",
+    "placeholder": "Ask me anything about your legal documents..."
+  },
+  "chatInput": {
+    "placeholder": "Message Mike...",
+    "addDocument": "Add document",
+    "send": "Send"
+  },
+  "sidePanel": {
+    "title": "Sources",
+    "noDocuments": "No documents attached"
+  },
+  "workflow": {
+    "select": "Select workflow",
+    "run": "Run workflow"
+  },
+  "model": {
+    "select": "Select model"
+  }
+}

@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { X, Users, Upload } from "lucide-react";
+import { useTranslations } from "next-intl";
 import {
     addDocumentToProject,
     createProject,
@@ -20,6 +21,7 @@ interface Props {
 }
 
 export function NewProjectModal({ open, onClose, onCreated }: Props) {
+    const t = useTranslations("projects");
     const [name, setName] = useState("");
     const [cmNumber, setCmNumber] = useState("");
     const [sharedEmails, setSharedEmails] = useState<string[]>([]);
@@ -91,9 +93,9 @@ export function NewProjectModal({ open, onClose, onCreated }: Props) {
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 pt-5 pb-2">
                     <div className="flex items-center gap-1.5 text-xs text-gray-400">
-                        <span>Projects</span>
+                        <span>{t("title")}</span>
                         <span>›</span>
-                        <span>New project</span>
+                        <span>{t("modal.create")}</span>
                     </div>
                     <button
                         onClick={handleClose}
@@ -110,7 +112,7 @@ export function NewProjectModal({ open, onClose, onCreated }: Props) {
                             type="text"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            placeholder="Project name"
+                            placeholder={t("modal.namePlaceholder")}
                             className="w-full text-2xl font-serif text-gray-800 placeholder-gray-300 focus:outline-none bg-transparent"
                             autoFocus
                         />
@@ -203,7 +205,7 @@ export function NewProjectModal({ open, onClose, onCreated }: Props) {
                                 disabled={!name.trim() || loading}
                                 className="rounded-lg bg-gray-900 px-5 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-40 transition-colors"
                             >
-                                {loading ? "Creating…" : "Create project"}
+                                {loading ? "Creating…" : t("modal.create")}
                             </button>
                         </div>
                     </div>

@@ -1,0 +1,38 @@
+{
+  "addDocuments": {
+    "title": "Adicionar Documentos",
+    "upload": "Enviar arquivos",
+    "dragDrop": "Arraste e solte arquivos aqui, ou clique para navegar",
+    "supported": "Formatos suportados: PDF, DOCX, TXT, MD",
+    "uploading": "Enviando...",
+    "noFiles": "Nenhum arquivo selecionado"
+  },
+  "apiKeyMissing": {
+    "title": "Chave de API Necessária",
+    "description": "Adicione uma chave de API para continuar usando este recurso.",
+    "goToSettings": "Ir para Configurações"
+  },
+  "ownerOnly": {
+    "title": "Acesso de Proprietário Necessário",
+    "description": "Apenas o proprietário pode realizar esta ação."
+  },
+  "deleteChats": {
+    "title": "Excluir Todos os Chats",
+    "description": "Tem certeza que deseja excluir todo o histórico de conversas? Esta ação não pode ser desfeita.",
+    "confirm": "Excluir Tudo"
+  },
+  "creditsExhausted": {
+    "title": "Créditos Esgotados",
+    "description": "Você usou todos os créditos disponíveis.",
+    "upgrade": "Fazer Upgrade"
+  },
+  "uploadVersion": {
+    "title": "Enviar Nova Versão",
+    "description": "Envie uma nova versão deste documento.",
+    "selectFile": "Selecionar arquivo"
+  },
+  "docView": {
+    "title": "Pré-visualização do Documento",
+    "noPreview": "Pré-visualização não disponível"
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "title": "Tabular Reviews",
+  "newReview": "New Tabular Review",
+  "noReviews": "No tabular reviews yet",
+  "table": {
+    "document": "Document",
+    "status": "Status",
+    "actions": "Actions",
+    "generating": "Generating...",
+    "pending": "Pending",
+    "done": "Done",
+    "error": "Error"
+  },
+  "column": {
+    "add": "Add Column",
+    "edit": "Edit Column",
+    "delete": "Delete Column",
+    "name": "Column name",
+    "prompt": "Prompt",
+    "format": "Format",
+    "regenerate": "Regenerate"
+  },
+  "sidePanel": {
+    "title": "Details",
+    "noSelection": "Select a cell to view details"
+  },
+  "chat": {
+    "placeholder": "Ask about this document...",
+    "send": "Send"
+  },
+  "modal": {
+    "create": "Create Tabular Review",
+    "name": "Review name",
+    "selectWorkflow": "Select workflow",
+    "selectDocuments": "Select documents"
+  }
+}

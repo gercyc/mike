@@ -1,0 +1,22 @@
+{
+  "initialView": {
+    "title": "Como posso ajudar você hoje?",
+    "placeholder": "Pergunte qualquer coisa sobre seus documentos jurídicos..."
+  },
+  "chatInput": {
+    "placeholder": "Mensagem para o Mike...",
+    "addDocument": "Adicionar documento",
+    "send": "Enviar"
+  },
+  "sidePanel": {
+    "title": "Fontes",
+    "noDocuments": "Nenhum documento anexado"
+  },
+  "workflow": {
+    "select": "Selecionar workflow",
+    "run": "Executar workflow"
+  },
+  "model": {
+    "select": "Selecionar modelo"
+  }
+}

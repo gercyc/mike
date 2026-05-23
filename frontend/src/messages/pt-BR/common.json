@@ -1,0 +1,46 @@
+{
+  "meta": {
+    "title": "Mike - Plataforma Jurídica com IA",
+    "description": "Plataforma de análise de documentos jurídicos e revisão de contratos com inteligência artificial."
+  },
+  "actions": {
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "delete": "Excluir",
+    "confirm": "Confirmar",
+    "close": "Fechar",
+    "edit": "Editar",
+    "add": "Adicionar",
+    "remove": "Remover",
+    "create": "Criar",
+    "loading": "Carregando...",
+    "submit": "Enviar",
+    "back": "Voltar",
+    "next": "Próximo",
+    "done": "Concluído",
+    "copy": "Copiar",
+    "share": "Compartilhar",
+    "download": "Baixar",
+    "upload": "Enviar arquivo",
+    "search": "Pesquisar",
+    "clear": "Limpar"
+  },
+  "nav": {
+    "projects": "Projetos",
+    "workflows": "Workflows",
+    "assistant": "Assistente",
+    "account": "Conta",
+    "tabularReviews": "Revisões Tabulares",
+    "language": "Idioma"
+  },
+  "language": {
+    "en": "English",
+    "ptBR": "Português (Brasil)"
+  },
+  "status": {
+    "error": "Ocorreu um erro",
+    "success": "Sucesso",
+    "notFound": "Não encontrado",
+    "unauthorized": "Não autorizado"
+  }
+}

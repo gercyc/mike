@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, Loader2, Search, Upload, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { getProject, uploadProjectDocument } from "@/app/lib/mikeApi";
 import type { MikeDocument } from "./types";
 import { DocFileIcon } from "./FileDirectory";
@@ -37,6 +38,7 @@ export function AddProjectDocsModal({
     excludeDocIds,
     allowMultiple = true,
 }: Props) {
+    const t = useTranslations("modals.addDocuments");
     const [docs, setDocs] = useState<MikeDocument[]>([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState("");
@@ -268,7 +270,7 @@ export function AddProjectDocsModal({
                             ) : (
                                 <Upload className="h-3.5 w-3.5" />
                             )}
-                            {uploading ? "Uploading…" : "Upload"}
+                            {uploading ? t("uploading") : t("upload")}
                         </button>
                     </div>
                     <div className="flex items-center gap-2">
@@ -290,6 +292,7 @@ export function AddProjectDocsModal({
                         >
                             Confirm
                         </button>
+
                     </div>
                 </div>
             </div>

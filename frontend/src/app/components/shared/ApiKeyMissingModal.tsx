@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, X } from "lucide-react";
 import { providerLabel, type ModelProvider } from "@/app/lib/modelAvailability";
+import { useTranslations } from "next-intl";
 
 interface Props {
     open: boolean;
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function ApiKeyMissingModal({ open, onClose, provider, message }: Props) {
+    const t = useTranslations("modals.apiKeyMissing");
     const router = useRouter();
     if (!open) return null;
 
@@ -40,7 +42,7 @@ export function ApiKeyMissingModal({ open, onClose, provider, message }: Props) 
                     <div className="flex items-center gap-2">
                         <AlertTriangle className="h-4 w-4 text-amber-600" />
                         <h2 className="text-base font-medium text-gray-900">
-                            API key required
+                            {t("title")}
                         </h2>
                     </div>
                     <button
@@ -68,7 +70,7 @@ export function ApiKeyMissingModal({ open, onClose, provider, message }: Props) 
                         onClick={handleGoToAccount}
                         className="rounded-lg bg-gray-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-gray-700"
                     >
-                        Go to account settings
+                        {t("goToSettings")}
                     </button>
                 </div>
             </div>

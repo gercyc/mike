@@ -11,9 +11,9 @@ import { WFColumnViewModal } from "@/app/components/workflows/WFColumnViewModal"
 import { AddColumnModal } from "@/app/components/tabular/AddColumnModal";
 import type { ColumnConfig, MikeWorkflow } from "@/app/components/shared/types";
 import {
-    BUILT_IN_IDS,
-    BUILT_IN_WORKFLOWS,
-} from "@/app/components/workflows/builtinWorkflows";
+    useBuiltinWorkflows,
+    useBuiltinWorkflowIds,
+} from "@/contexts/BuiltinWorkflowsContext";
 import { formatIcon, formatLabel } from "@/app/components/tabular/columnFormat";
 import { RenameableTitle } from "@/app/components/shared/RenameableTitle";
 // dynamic import keeps Tiptap (browser-only) out of the SSR bundle
@@ -40,6 +40,8 @@ const NAME_COL_W = "w-[300px] shrink-0";
 export default function WorkflowDetailPage({ params }: Props) {
     const { id } = use(params);
     const router = useRouter();
+    const BUILT_IN_WORKFLOWS = useBuiltinWorkflows();
+    const BUILT_IN_IDS = useBuiltinWorkflowIds();
 
     const [workflow, setWorkflow] = useState<MikeWorkflow | null>(null);
     const [loading, setLoading] = useState(true);
@@ -114,7 +116,7 @@ export default function WorkflowDetailPage({ params }: Props) {
             })
             .catch(() => setNotFound(true))
             .finally(() => setLoading(false));
-    }, [id, isBuiltin]);
+    }, [id, isBuiltin, BUILT_IN_WORKFLOWS]);
 
     // ---------------------------------------------------------------------------
     // Debounced auto-save for prompt

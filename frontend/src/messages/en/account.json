@@ -1,0 +1,43 @@
+{
+  "title": "Account Settings",
+  "models": {
+    "title": "Model Preferences",
+    "tabularReviewModel": "Tabular review model",
+    "description": "Choose the AI model used for tabular reviews"
+  },
+  "apiKeys": {
+    "title": "API Keys",
+    "addKey": "Add API Key",
+    "provider": "Provider",
+    "key": "Key",
+    "noKeys": "No API keys configured"
+  },
+  "language": {
+    "title": "Language",
+    "label": "Interface language",
+    "en": "English",
+    "ptBR": "Português (Brasil)"
+  },
+  "profile": {
+    "title": "Profile",
+    "email": "Email",
+    "name": "Display Name",
+    "organisation": "Organisation"
+  },
+  "subscription": {
+    "title": "Usage Plan",
+    "credits": "Credits remaining"
+  },
+  "actions": {
+    "title": "Actions",
+    "signOut": "Sign Out",
+    "cancel": "Cancel"
+  },
+  "dangerZone": {
+    "title": "Danger Zone",
+    "description": "Permanently delete your account and all associated data. This action cannot be undone.",
+    "confirm": "Are you sure? This will permanently delete your account.",
+    "deleting": "Deleting…",
+    "deleteAccount": "Delete Account"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "title": "Projetos",
+  "newProject": "Novo Projeto",
+  "noProjects": "Nenhum projeto ainda",
+  "modal": {
+    "create": "Criar Projeto",
+    "name": "Nome do projeto",
+    "namePlaceholder": "Digite o nome do projeto",
+    "description": "Descrição",
+    "descriptionPlaceholder": "Descrição opcional"
+  },
+  "tabs": {
+    "assistant": "Assistente",
+    "reviews": "Revisões",
+    "documents": "Documentos"
+  },
+  "documents": {
+    "add": "Adicionar Documentos",
+    "noDocuments": "Nenhum documento neste projeto"
+  },
+  "people": {
+    "manage": "Gerenciar Pessoas",
+    "invite": "Convidar",
+    "email": "Endereço de e-mail"
+  }
+}

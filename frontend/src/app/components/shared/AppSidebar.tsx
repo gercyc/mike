@@ -10,23 +10,21 @@ import {
     User,
     ChevronsUpDown,
     ChevronDown,
+    Globe,
+    Check,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { useChatHistoryContext } from "@/app/contexts/ChatHistoryContext";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname } from "@/i18n/navigation";
+import { useLocale } from "next-intl";
+import { setLocaleCookie } from "@/lib/locale";
 import Link from "next/link";
 import { MikeIcon } from "@/components/chat/mike-icon";
 import { SidebarChatItem } from "@/app/components/shared/SidebarChatItem";
 import { listProjects } from "@/app/lib/mikeApi";
 import type { MikeProject } from "@/app/components/shared/types";
-
-const NAV_ITEMS = [
-    { href: "/assistant", label: "Assistant", icon: MessageSquare },
-    { href: "/projects", label: "Projects", icon: FolderOpen },
-    { href: "/tabular-reviews", label: "Tabular Review", icon: Table2 },
-    { href: "/workflows", label: "Workflows", icon: Library },
-];
+import { useTranslations } from "next-intl";
 
 interface AppSidebarProps {
     isOpen: boolean;
@@ -34,6 +32,8 @@ interface AppSidebarProps {
 }
 
 export function AppSidebar({ isOpen, onToggle }: AppSidebarProps) {
+    const t = useTranslations("common");
+    const locale = useLocale();
     const { user } = useAuth();
     const { profile } = useUserProfile();
     const {
@@ -55,6 +55,13 @@ export function AppSidebar({ isOpen, onToggle }: AppSidebarProps) {
     const [recentProjects, setRecentProjects] = useState<MikeProject[] | null>(
         null,
     );
+
+    const NAV_ITEMS = [
+        { href: "/assistant", label: t("nav.assistant"), icon: MessageSquare },
+        { href: "/projects", label: t("nav.projects"), icon: FolderOpen },
+        { href: "/tabular-reviews", label: t("nav.tabularReviews"), icon: Table2 },
+        { href: "/workflows", label: t("nav.workflows"), icon: Library },
+    ];
 
     useEffect(() => {
         if (!user) return;
@@ -245,7 +252,7 @@ export function AppSidebar({ isOpen, onToggle }: AppSidebarProps) {
                                                 : ""
                                         }`}
                                     >
-                                        No projects yet
+                                        {t("nav.projects")}
                                     </div>
                                 ) : (
                                     <div
@@ -430,8 +437,33 @@ export function AppSidebar({ isOpen, onToggle }: AppSidebarProps) {
                                     className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 rounded-md"
                                 >
                                     <User className="h-4 w-4" />
-                                    Account Settings
+                                    {t("nav.account")}
                                 </button>
+                                <div className="border-t border-gray-100 my-1" />
+                                <div className="px-4 py-2 text-xs font-semibold text-gray-500 flex items-center gap-1.5">
+                                    <Globe className="h-3.5 w-3.5" />
+                                    {t("nav.language")}
+                                </div>
+                                {(['en', 'pt-BR'] as const).map((l) => (
+                                    <button
+                                        key={l}
+                                        onClick={() => {
+                                            if (l !== locale) {
+                                                setLocaleCookie(l);
+                                                router.replace(pathname, { locale: l });
+                                            }
+                                            setIsDropdownOpen(false);
+                                        }}
+                                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center justify-between rounded-md"
+                                    >
+                                        <span>
+                                            {l === 'en' ? t("language.en") : t("language.ptBR")}
+                                        </span>
+                                        {locale === l && (
+                                            <Check className="h-4 w-4 text-gray-900" />
+                                        )}
+                                    </button>
+                                ))}
                             </div>
                         )}
                     </div>

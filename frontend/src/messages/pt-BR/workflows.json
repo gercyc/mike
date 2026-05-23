@@ -1,0 +1,37 @@
+{
+  "title": "Workflows",
+  "newWorkflow": "Novo Workflow",
+  "noWorkflows": "Nenhum workflow ainda",
+  "builtin": "Padrão",
+  "custom": "Personalizado",
+  "practices": {
+    "all": "Todas as Áreas",
+    "generalTransactions": "Transações Gerais",
+    "ma": "M&A",
+    "finance": "Financeiro",
+    "realEstate": "Imobiliário",
+    "litigation": "Contencioso",
+    "employment": "Trabalhista",
+    "corporate": "Societário",
+    "ip": "Propriedade Intelectual"
+  },
+  "modal": {
+    "create": "Criar Workflow",
+    "edit": "Editar Workflow",
+    "share": "Compartilhar Workflow",
+    "delete": "Excluir Workflow",
+    "name": "Nome do workflow",
+    "type": "Tipo",
+    "assistant": "Assistente",
+    "tabular": "Revisão Tabular",
+    "prompt": "Prompt",
+    "columns": "Colunas"
+  },
+  "column": {
+    "add": "Adicionar Coluna",
+    "name": "Nome da coluna",
+    "prompt": "Prompt",
+    "format": "Formato"
+  },
+  "run": "Executar Workflow"
+}
