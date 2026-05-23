@@ -123,13 +123,17 @@ function spawnService(name, cmd, args, opts = {}) {
   return proc;
 }
 
+function resolveBin(dir, name) {
+  const base = path.join(dir, "node_modules", ".bin", name);
+  // On Windows, bun installs .exe wrappers; on Unix, plain binaries.
+  const candidates = [base, `${base}.exe`, `${base}.cmd`];
+  return candidates.find((p) => fs.existsSync(p)) || null;
+}
+
 function startBackend() {
-  // Use the local tsx so we don't require a global install.
-  const tsxBin = path.join(BACKEND_DIR, "node_modules", ".bin", "tsx");
-  const cmd = fs.existsSync(tsxBin) ? tsxBin : "npx";
-  const args = fs.existsSync(tsxBin)
-    ? ["src/index.ts"]
-    : ["tsx", "src/index.ts"];
+  const tsxBin = resolveBin(BACKEND_DIR, "tsx");
+  const cmd = tsxBin || "npx";
+  const args = tsxBin ? ["src/index.ts"] : ["tsx", "src/index.ts"];
   return spawnService("backend", cmd, args, {
     cwd: BACKEND_DIR,
     env: { ...process.env, NODE_ENV: IS_DEV ? "development" : "production" },
@@ -137,9 +141,9 @@ function startBackend() {
 }
 
 function startFrontend() {
-  const nextBin = path.join(FRONTEND_DIR, "node_modules", ".bin", "next");
-  const cmd = fs.existsSync(nextBin) ? nextBin : "npx";
-  const args = fs.existsSync(nextBin)
+  const nextBin = resolveBin(FRONTEND_DIR, "next");
+  const cmd = nextBin || "npx";
+  const args = nextBin
     ? IS_DEV
       ? ["dev", "--port", String(FRONTEND_PORT)]
       : ["start", "--port", String(FRONTEND_PORT)]
