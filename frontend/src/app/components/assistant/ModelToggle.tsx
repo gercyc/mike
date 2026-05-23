@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { ChevronDown, Check, AlertCircle, Loader2, Search } from "lucide-react";
 import {
     DropdownMenu,
@@ -49,6 +50,7 @@ function isFreeModel(m: OpenRouterModel): boolean {
 }
 
 export function ModelToggle({ value, onChange, apiKeys }: Props) {
+    const t = useTranslations("assistant");
     const [isOpen, setIsOpen] = useState(false);
     const [orSearch, setOrSearch] = useState("");
     const searchRef = useRef<HTMLInputElement>(null);
@@ -99,8 +101,8 @@ export function ModelToggle({ value, onChange, apiKeys }: Props) {
                     className={`flex items-center gap-1.5 rounded-lg px-2 h-8 text-sm transition-colors cursor-pointer text-gray-400 hover:bg-gray-100 hover:text-gray-700 ${isOpen ? "bg-gray-100 text-gray-700" : ""}`}
                     title={
                         !selectedAvailable
-                            ? "API key missing for selected model"
-                            : "Choose model"
+                            ? t("modelToggle.apiKeyMissingTitle")
+                            : t("modelToggle.chooseModel")
                     }
                 >
                     {!selectedAvailable && (
@@ -140,7 +142,7 @@ export function ModelToggle({ value, onChange, apiKeys }: Props) {
                                             {!available && (
                                                 <AlertCircle
                                                     className="h-3.5 w-3.5 text-red-500 ml-1"
-                                                    aria-label="API key missing"
+                                                    aria-label={t("modelToggle.apiKeyMissingAria")}
                                                 />
                                             )}
                                             {m.id === value && available && (
@@ -165,7 +167,7 @@ export function ModelToggle({ value, onChange, apiKeys }: Props) {
                         {orState.status === "loading" && (
                             <div className="flex items-center gap-2 px-2 py-1.5 text-xs text-gray-400">
                                 <Loader2 className="h-3 w-3 animate-spin" />
-                                Loading models…
+                                {t("modelToggle.loadingModels")}
                             </div>
                         )}
 
@@ -184,7 +186,7 @@ export function ModelToggle({ value, onChange, apiKeys }: Props) {
                                         <input
                                             ref={searchRef}
                                             type="text"
-                                            placeholder="Search models…"
+                                            placeholder={t("modelToggle.searchPlaceholder")}
                                             value={orSearch}
                                             onChange={(e) => setOrSearch(e.target.value)}
                                             onKeyDown={(e) => e.stopPropagation()}
@@ -197,7 +199,7 @@ export function ModelToggle({ value, onChange, apiKeys }: Props) {
                                 <div className="overflow-y-auto min-h-0 flex-1">
                                     {filteredOrModels.length === 0 ? (
                                         <div className="px-2 py-2 text-xs text-gray-400">
-                                            No models match "{orSearch}"
+                                            {t("modelToggle.noModelsMatch", { search: orSearch })}
                                         </div>
                                     ) : (
                                         filteredOrModels.map((m) => {
@@ -213,7 +215,7 @@ export function ModelToggle({ value, onChange, apiKeys }: Props) {
                                                     </span>
                                                     {free && (
                                                         <span className="ml-1 shrink-0 rounded px-1 py-0.5 text-[10px] font-medium bg-green-50 text-green-700">
-                                                            free
+                                                            {t("modelToggle.free")}
                                                         </span>
                                                     )}
                                                     {m.id === value && (

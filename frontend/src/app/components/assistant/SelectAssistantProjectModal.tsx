@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useChatHistoryContext } from "@/app/contexts/ChatHistoryContext";
 import { useDirectoryData } from "../shared/useDirectoryData";
 import { ProjectPicker } from "../shared/ProjectPicker";
@@ -14,6 +15,8 @@ interface Props {
 }
 
 export function SelectAssistantProjectModal({ open, onClose }: Props) {
+    const t = useTranslations("assistant");
+    const tc = useTranslations("common");
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [creating, setCreating] = useState(false);
     const router = useRouter();
@@ -48,7 +51,7 @@ export function SelectAssistantProjectModal({ open, onClose }: Props) {
                     <div className="flex items-center gap-1.5 text-xs text-gray-400">
                         <span>Assistant</span>
                         <span>›</span>
-                        <span>Start Chat in a Project</span>
+                        <span>{t("projectModal.startChat")}</span>
                     </div>
                     <button
                         onClick={onClose}
@@ -71,7 +74,7 @@ export function SelectAssistantProjectModal({ open, onClose }: Props) {
                         onClick={onClose}
                         className="rounded-lg px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-100"
                     >
-                        Cancel
+                        {tc("actions.cancel")}
                     </button>
                     <button
                         onClick={handleContinue}
@@ -81,7 +84,7 @@ export function SelectAssistantProjectModal({ open, onClose }: Props) {
                         {creating ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         ) : (
-                            "Continue"
+                            t("projectModal.continue")
                         )}
                     </button>
                 </div>

@@ -16,6 +16,7 @@ import type { MikeDocument, MikeWorkflow } from "../shared/types";
 import { createTabularReview } from "@/app/lib/mikeApi";
 import { useRouter } from "next/navigation";
 import { formatIcon, formatLabel } from "../tabular/columnFormat";
+import { useTranslations } from "next-intl";
 import { useDirectoryData } from "../shared/useDirectoryData";
 import { FileDirectory } from "../shared/FileDirectory";
 import type { MikeProject } from "../shared/types";
@@ -193,6 +194,7 @@ function AssistantPanel({ workflow }: { workflow: MikeWorkflow }) {
 // Right panel for tabular workflows — accordion column list (select screen)
 // ---------------------------------------------------------------------------
 function TabularPanel({ workflow }: { workflow: MikeWorkflow }) {
+    const t = useTranslations("tabular");
     const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
     const columns = (workflow.columns_config ?? []).sort(
         (a, b) => a.index - b.index,
@@ -231,7 +233,7 @@ function TabularPanel({ workflow }: { workflow: MikeWorkflow }) {
                                         {col.name}
                                     </span>
                                     <span className="shrink-0 text-gray-400">
-                                        {formatLabel(col.format ?? "text")}
+                                        {formatLabel(t, col.format ?? "text")}
                                     </span>
                                     <ChevronDown
                                         className={`h-3 w-3 shrink-0 text-gray-300 transition-transform duration-150 ${isExpanded ? "rotate-180" : ""}`}
@@ -282,6 +284,7 @@ function TabularPanel({ workflow }: { workflow: MikeWorkflow }) {
 // DisplayWorkflowModal
 // ---------------------------------------------------------------------------
 export function DisplayWorkflowModal({ workflows, workflow, onClose }: Props) {
+    const t = useTranslations("tabular");
     const [screen, setScreen] = useState<"select" | "configure">("select");
     const [selected, setSelected] = useState<MikeWorkflow | null>(workflow);
     const [listSearch, setListSearch] = useState("");

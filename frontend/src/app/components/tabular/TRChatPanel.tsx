@@ -32,6 +32,7 @@ import { ModelToggle } from "../assistant/ModelToggle";
 import { ApiKeyMissingModal } from "../shared/ApiKeyMissingModal";
 import { PreResponseWrapper } from "../shared/PreResponseWrapper";
 import { useUserProfile } from "@/contexts/UserProfileContext";
+import { useTranslations } from "next-intl";
 import {
     getModelProvider,
     isModelAvailable,
@@ -67,12 +68,7 @@ interface Props {
 // Reasoning block
 // ---------------------------------------------------------------------------
 
-const THINKING_PHRASES = [
-    "Thinking...",
-    "Pondering...",
-    "Analyzing...",
-    "Reasoning...",
-];
+// THINKING_PHRASES are now loaded via t.raw("message.thinkingPhrases") from assistant namespace
 
 function ReasoningBlock({
     text,
@@ -81,13 +77,15 @@ function ReasoningBlock({
     text: string;
     isStreaming: boolean;
 }) {
+    const t = useTranslations("assistant");
     const [isOpen, setIsOpen] = useState(false);
+    const thinkingPhrases = t.raw("message.thinkingPhrases") as string[];
     const [phraseIdx, setPhraseIdx] = useState(0);
 
     useEffect(() => {
         if (!isStreaming) return;
         const interval = setInterval(
-            () => setPhraseIdx((i) => (i + 1) % THINKING_PHRASES.length),
+            () => setPhraseIdx((i) => (i + 1) % thinkingPhrases.length),
             2000,
         );
         return () => clearInterval(interval);
@@ -106,8 +104,8 @@ function ReasoningBlock({
                 )}
                 <span className="font-medium ml-2">
                     {isStreaming
-                        ? THINKING_PHRASES[phraseIdx]
-                        : "Thought process"}
+                        ? thinkingPhrases[phraseIdx]
+                        : t("message.thoughtProcess")}
                 </span>
                 {!isStreaming && (
                     <ChevronDown
@@ -138,6 +136,7 @@ function DocReadBlock({
     label: string;
     isStreaming?: boolean;
 }) {
+    const t = useTranslations("assistant");
     return (
         <div className="flex items-center text-sm text-gray-400 ml-1">
             {isStreaming ? (
@@ -146,7 +145,7 @@ function DocReadBlock({
                 <div className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0" />
             )}
             <span className="font-medium ml-2">
-                {isStreaming ? "Reading" : "Read"}
+                {isStreaming ? t("message.reading") : t("message.read")}
             </span>
             <span className="ml-1 text-gray-500">{label}</span>
         </div>
@@ -458,6 +457,7 @@ function TRChatInput({
     apiKeys?: ApiKeyState;
     onHeightChange: (height: number) => void;
 }) {
+    const tt = useTranslations("tabular");
     const [value, setValue] = useState("");
     const rootRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -513,7 +513,7 @@ function TRChatInput({
                 <textarea
                     ref={textareaRef}
                     rows={1}
-                    placeholder="Ask a question about your documents..."
+                    placeholder={tt("chat.placeholder")}
                     value={value}
                     onChange={(e) => {
                         setValue(e.target.value);
@@ -568,6 +568,7 @@ function HistoryDropdown({
     currentChatId: string | null;
     onLoad: (chatId: string) => void;
 }) {
+    const tt = useTranslations("tabular");
     const [query, setQuery] = useState("");
     const filtered = chats
         .filter((c) => c.id !== currentChatId)
@@ -583,7 +584,7 @@ function HistoryDropdown({
                 <input
                     autoFocus
                     type="text"
-                    placeholder="Search chats…"
+                    placeholder={tt("chat.searchPlaceholder")}
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     className="flex-1 text-xs bg-transparent outline-none placeholder:text-gray-400 text-gray-700"
@@ -594,12 +595,12 @@ function HistoryDropdown({
                     <p className="px-3 py-2 text-xs text-gray-400">
                         {chats.filter((c) => c.id !== currentChatId).length ===
                         0
-                            ? "No previous chats."
-                            : "No matches."}
+                            ? tt("chat.noPreviousChats")
+                            : tt("chat.noMatches")}
                     </p>
                 ) : (
                     filtered.map((chat) => {
-                        const label = chat.title ?? "Chat";
+                        const label = chat.title ?? tt("chat.chatLabel");
                         return (
                             <button
                                 key={chat.id}
@@ -642,6 +643,8 @@ export function TRChatPanel({
     initialChatId,
     onChatIdChange,
 }: Props) {
+    const tt = useTranslations("tabular");
+    const ta = useTranslations("assistant");
     const { profile, updateModelPreference } = useUserProfile();
     const apiKeys = profile?.apiKeys;
     const currentModel = profile?.tabularModel ?? "gemini-3-flash-preview";
@@ -1308,7 +1311,7 @@ export function TRChatPanel({
                                     type: "content" as const,
                                     text: isAbort
                                         ? ""
-                                        : "An error occurred. Please try again.",
+                                        : tt("chat.errorOccurred"),
                                 },
                             ],
                         };
@@ -1374,7 +1377,7 @@ export function TRChatPanel({
                         className="min-w-0 overflow-x-hidden whitespace-nowrap scrollbar-none"
                     >
                         <span className="text-xs font-medium text-gray-700">
-                            {currentChatTitle ?? "Assistant"}
+                            {currentChatTitle ?? tt("chat.assistant")}
                         </span>
                     </div>
                 </div>
@@ -1382,7 +1385,7 @@ export function TRChatPanel({
                     <div ref={historyRef} className="relative">
                         <button
                             onClick={() => setHistoryOpen((v) => !v)}
-                            title="Chat history"
+                            title={tt("chat.chatHistory")}
                             className={`flex items-center justify-center h-7 w-7 rounded-md transition-colors ${historyOpen ? "text-gray-900" : "text-gray-400 hover:text-gray-700"}`}
                         >
                             <Clock className="h-3.5 w-3.5" />
@@ -1399,7 +1402,7 @@ export function TRChatPanel({
                     </div>
                     <button
                         onClick={handleNewChat}
-                        title="New chat"
+                        title={tt("chat.newChat")}
                         className="flex items-center justify-center h-7 w-7 rounded-md text-gray-400 hover:text-gray-700 transition-colors"
                     >
                         <MessageSquarePlus className="h-3.5 w-3.5" />
@@ -1407,7 +1410,7 @@ export function TRChatPanel({
                     {currentChatId && (
                         <button
                             onClick={handleDeleteChat}
-                            title="Delete chat"
+                            title={tt("chat.deleteChat")}
                             className="flex items-center justify-center h-7 w-7 rounded-md text-gray-400 hover:text-red-600 transition-colors"
                         >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -1415,7 +1418,7 @@ export function TRChatPanel({
                     )}
                     <button
                         onClick={onClose}
-                        title="Close"
+                        title={tt("chat.close")}
                         className="flex items-center justify-center h-7 w-7 rounded-md text-gray-400 hover:text-gray-700 transition-colors"
                     >
                         <X className="h-3.5 w-3.5" />

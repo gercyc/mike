@@ -6,6 +6,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { ColumnConfig } from "../shared/types";
 import { formatIcon, formatLabel } from "../tabular/columnFormat";
+import { useTranslations } from "next-intl";
 
 interface Props {
     col: ColumnConfig;
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export function WFColumnViewModal({ col, onClose }: Props) {
+    const t = useTranslations("tabular");
     const FormatIcon = formatIcon(col.format ?? "text");
     return createPortal(
         <div className="fixed inset-0 z-[101] flex items-center justify-center bg-black/20 backdrop-blur-xs">
@@ -36,7 +38,7 @@ export function WFColumnViewModal({ col, onClose }: Props) {
                         <p className="text-sm font-medium text-gray-500 mb-2">Format</p>
                         <span className="inline-flex items-center gap-1.5 text-sm text-gray-700">
                             <FormatIcon className="h-3.5 w-3.5 text-gray-400" />
-                            {formatLabel(col.format ?? "text")}
+                            {formatLabel(t, col.format ?? "text")}
                         </span>
                     </div>
                     {col.tags && col.tags.length > 0 && (

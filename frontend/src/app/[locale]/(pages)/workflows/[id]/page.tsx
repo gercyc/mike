@@ -15,6 +15,7 @@ import {
     useBuiltinWorkflowIds,
 } from "@/contexts/BuiltinWorkflowsContext";
 import { formatIcon, formatLabel } from "@/app/components/tabular/columnFormat";
+import { useTranslations } from "next-intl";
 import { RenameableTitle } from "@/app/components/shared/RenameableTitle";
 // dynamic import keeps Tiptap (browser-only) out of the SSR bundle
 const WorkflowPromptEditor = dynamic(
@@ -38,6 +39,7 @@ const NAME_COL_W = "w-[300px] shrink-0";
 // Page
 // ---------------------------------------------------------------------------
 export default function WorkflowDetailPage({ params }: Props) {
+    const t = useTranslations("tabular");
     const { id } = use(params);
     const router = useRouter();
     const BUILT_IN_WORKFLOWS = useBuiltinWorkflows();
@@ -436,7 +438,7 @@ export default function WorkflowDetailPage({ params }: Props) {
                                             <div className="ml-auto w-36 shrink-0">
                                                 <span className="inline-flex items-center gap-1.5 text-xs text-gray-600">
                                                     <FormatIcon className="h-3.5 w-3.5 text-gray-400" />
-                                                    {formatLabel(col.format ?? "text")}
+                                                    {formatLabel(t, col.format ?? "text")}
                                                 </span>
                                             </div>
                                             <div className="flex-1 min-w-0 pr-4">

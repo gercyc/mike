@@ -14,7 +14,9 @@
   },
   "ownerOnly": {
     "title": "Acesso de Proprietário Necessário",
-    "description": "Apenas o proprietário pode realizar esta ação."
+    "description": "Apenas o proprietário pode realizar esta ação.",
+    "descriptionWithAction": "Apenas o proprietário do projeto pode {action}.",
+    "askOwner": "Entre em contato com {ownerEmail} se precisar de acesso."
   },
   "deleteChats": {
     "title": "Excluir Todos os Chats",

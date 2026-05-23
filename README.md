@@ -4,6 +4,8 @@ Mike is a legal document assistant with a Next.js frontend, an Express backend, 
 
 Website: [mikeoss.com](https://mikeoss.com)
 
+[Leia em Português (Brasil)](README.pt-BR.md)
+
 ## Contents
 
 - `frontend/` - Next.js application

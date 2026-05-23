@@ -2,6 +2,32 @@
   "title": "Revisões Tabulares",
   "newReview": "Nova Revisão Tabular",
   "noReviews": "Nenhuma revisão tabular ainda",
+  "tabs": {
+    "all": "Todos",
+    "inProject": "No Projeto",
+    "standalone": "Independente"
+  },
+  "filterByProject": "Filtrar por projeto",
+  "allProjects": "Todos os Projetos",
+  "searchPlaceholder": "Pesquisar revisões…",
+  "tableHeaders": {
+    "name": "Nome",
+    "columns": "Colunas",
+    "documents": "Documentos",
+    "project": "Projeto",
+    "created": "Criado"
+  },
+  "empty": {
+    "title": "Revisões Tabulares",
+    "description": "Extraia dados de documentos em tabelas usando IA.",
+    "createNew": "Criar Novo"
+  },
+  "noReviewsFound": "Nenhuma revisão encontrada",
+  "ownerOnly": {
+    "renameReview": "renomear esta revisão tabular",
+    "deleteReview": "excluir esta revisão tabular",
+    "deleteSelectedReviews": "excluir {blocked} das revisões selecionadas — apenas o criador da revisão pode excluir uma revisão"
+  },
   "table": {
     "document": "Documento",
     "status": "Status",
@@ -18,7 +44,14 @@
     "name": "Nome da coluna",
     "prompt": "Prompt",
     "format": "Formato",
-    "regenerate": "Regenerar"
+    "regenerate": "Regenerar",
+    "presets": "Presets de coluna",
+    "tags": "Tags",
+    "addTagPlaceholder": "Adicionar tag…",
+    "tagHint": "Pressione Enter ou vírgula para adicionar uma tag.",
+    "autoGenerate": "Gerar Prompt Automaticamente",
+    "promptPlaceholder": "Escreva o prompt de análise — descreva o que o Mike deve extrair de cada documento para esta coluna…",
+    "addAnother": "Adicionar outra coluna"
   },
   "sidePanel": {
     "title": "Detalhes",
@@ -26,12 +59,150 @@
   },
   "chat": {
     "placeholder": "Pergunte sobre este documento...",
-    "send": "Enviar"
+    "send": "Enviar",
+    "searchPlaceholder": "Buscar chats…",
+    "noPreviousChats": "Nenhum chat anterior.",
+    "noMatches": "Nenhuma correspondência.",
+    "chatLabel": "Chat",
+    "chatHistory": "Histórico de chat",
+    "newChat": "Novo chat",
+    "deleteChat": "Excluir chat",
+    "close": "Fechar",
+    "errorOccurred": "Ocorreu um erro. Tente novamente.",
+    "assistant": "Assistente"
+  },
+  "review": {
+    "untitled": "Revisão Sem Título",
+    "searchDocuments": "Buscar documentos…",
+    "peopleWithAccess": "Pessoas com acesso",
+    "exportToExcel": "Exportar para Excel",
+    "export": "Exportar",
+    "running": "Executando…",
+    "run": "Executar",
+    "assistantInReview": "Assistente na Revisão Tabular",
+    "actions": "Ações",
+    "clearResults": "Limpar resultados",
+    "addDocuments": "Adicionar Documentos",
+    "addColumns": "Adicionar Colunas"
+  },
+  "breadcrumb": {
+    "projects": "Projetos",
+    "tabularReviews": "Revisões Tabulares",
+    "addDocuments": "Adicionar Documentos",
+    "people": "Pessoas",
+    "newReview": "Nova revisão"
+  },
+  "formats": {
+    "text": "Texto Livre",
+    "bulleted_list": "Lista com marcadores",
+    "number": "Número",
+    "percentage": "Porcentagem",
+    "monetary_amount": "Valor Monetário",
+    "currency": "Moeda",
+    "yes_no": "Sim / Não",
+    "date": "Data",
+    "tag": "Tags",
+    "fallback": "Texto"
+  },
+  "newReview": {
+    "workflowTemplate": "Template de Workflow",
+    "loadingTemplates": "Carregando templates…",
+    "noTemplate": "Nenhum template — começar do zero",
+    "createUnderProject": "Criar sob um projeto",
+    "selectProject": "Selecionar projeto…",
+    "noProjectsFound": "Nenhum projeto encontrado",
+    "selectDocuments": "Selecionar Documentos",
+    "projectDocuments": "Documentos do Projeto",
+    "noReadyDocuments": "Nenhum documento pronto neste projeto",
+    "noDocumentsYet": "Nenhum documento ainda"
   },
   "modal": {
     "create": "Criar Revisão Tabular",
     "name": "Nome da revisão",
     "selectWorkflow": "Selecionar workflow",
-    "selectDocuments": "Selecionar documentos"
+    "selectDocuments": "Selecionar documentos",
+    "editColumn": "Editar coluna",
+    "newColumn": "Nova coluna",
+    "saveChanges": "Salvar alterações",
+    "addColumns": "Adicionar colunas"
+  },
+  "presets": {
+    "noPreset": "Nenhum Preset",
+    "parties": {
+      "name": "Partes",
+      "prompt": "Liste todas as partes deste acordo. Para cada parte, informe o nome legal completo, o tipo de entidade e o papel definido, por exemplo:\n• ABC Corp, uma corporação do Delaware (\"Empresa\")\n• João Silva (\"Acionista\")\nUma parte por marcador. Sem comentários adicionais."
+    },
+    "governingLaw": {
+      "name": "Lei Aplicável",
+      "prompt": "Informe apenas a lei aplicável a este acordo usando o nome abreviado da jurisdição, por exemplo \"Lei de Nova York\", \"Lei Inglesa\", \"Lei Indiana\", \"Lei da RPC\". Nenhum outro texto."
+    },
+    "effectiveDate": {
+      "name": "Data de Vigência",
+      "prompt": "Informe apenas a data de vigência deste acordo no formato DD Mmm AAAA, por exemplo \"2 Jan 2026\". Se não estiver explicitamente declarada, escreva \"Não especificado\"."
+    },
+    "term": {
+      "name": "Prazo",
+      "prompt": "Informe apenas a duração ou prazo deste acordo de forma concisa, por exemplo \"3 anos\", \"24 meses\", \"perpétuo\". Nenhum outro texto."
+    },
+    "termination": {
+      "name": "Rescisão",
+      "prompt": "Extraia as disposições de rescisão. Informe quem pode rescindir, os eventos desencadeadores, o prazo de aviso prévio exigido, qualquer prazo de cura e as principais consequências da rescisão. Seja conciso."
+    },
+    "changeOfControl": {
+      "name": "Mudança de Controle",
+      "prompt": "Identifique quaisquer disposições de mudança de controle. Resuma os eventos desencadeadores, as consequências, os requisitos de consentimento e quaisquer direitos relacionados a rescisão ou aceleração. Seja conciso."
+    },
+    "confidentiality": {
+      "name": "Confidencialidade",
+      "prompt": "Resuma as obrigações de confidencialidade: escopo das informações confidenciais, divulgações permitidas, restrições de uso, duração e principais exceções ou ressalvas."
+    },
+    "assignment": {
+      "name": "Cessão",
+      "prompt": "A cessão deste acordo é permitida sem o consentimento da outra parte?"
+    },
+    "paymentAndFees": {
+      "name": "Pagamento e Taxas",
+      "prompt": "Informe de forma concisa as principais obrigações de pagamento: valor, prazo e moeda, por exemplo \"USD 10.000 pagáveis em até 30 dias da fatura\". Mencione quaisquer consequências de pagamento em atraso."
+    },
+    "amendment": {
+      "name": "Alteração",
+      "prompt": "Resuma as disposições de alteração: como as alterações podem ser feitas, quem deve consentir e quaisquer requisitos formais como escrito ou assinatura."
+    },
+    "indemnity": {
+      "name": "Indenização",
+      "prompt": "Resuma as disposições de indenização: quem indeniza a quem, o escopo das perdas indenizadas, quaisquer limites ou exclusões de responsabilidade e os principais procedimentos de reclamação."
+    },
+    "warranties": {
+      "name": "Garantias",
+      "prompt": "Identifique e descreva as principais representações e garantias fornecidas por qualquer parte, incluindo o escopo dessas garantias e quaisquer períodos de tempo ou condições específicas aplicáveis a elas. Destaque em particular quaisquer garantias não padronizadas."
+    },
+    "forceMajeure": {
+      "name": "Força Maior",
+      "prompt": "Este acordo contém uma cláusula de força maior?"
+    }
+  },
+  "promptGenerator": {
+    "parties": {
+      "prompt": "Identifique todas as partes mencionadas no documento. Liste seus nomes completos e descreva o papel ou a capacidade de cada parte no acordo. Se uma parte não for claramente identificada, informe \"Não abordado\"."
+    },
+    "changeOfControl": {
+      "prompt": "Identifique quaisquer disposições de mudança de controle no documento. Resuma o gatilho, as consequências, quaisquer requisitos de consentimento e quaisquer obrigações relacionadas a rescisão, aceleração ou aviso. Se não for abordado, informe \"Não abordado\"."
+    },
+    "termination": {
+      "prompt": "Extraia as disposições de rescisão no documento. Resuma quem pode rescindir, os gatilhos de rescisão, quaisquer requisitos de aviso, prazos de cura e as consequências da rescisão. Se não for abordado, informe \"Não abordado\"."
+    },
+    "governingLaw": {
+      "prompt": "Identifique as disposições de lei aplicável e jurisdição no documento. Informe a lei aplicável, o fórum para disputas e quaisquer requisitos de submissão à jurisdição ou foro. Se não for abordado, informe \"Não abordado\"."
+    },
+    "confidentiality": {
+      "prompt": "Extraia as disposições de confidencialidade no documento. Resuma o escopo das informações confidenciais, divulgações permitidas, restrições de uso, duração e quaisquer exceções ou ressalvas. Se não for abordado, informe \"Não abordado\"."
+    },
+    "assignment": {
+      "prompt": "Identifique quaisquer disposições de cessão no documento. Resuma se a cessão é permitida, restrita ou requer consentimento, e observe quaisquer exceções ou cessões consideradas. Se não for abordado, informe \"Não abordado\"."
+    },
+    "paymentAndFees": {
+      "prompt": "Extraia os termos de pagamento e taxas no documento. Resuma as obrigações de pagamento, valores, prazos, moedas, tipos de taxas e quaisquer consequências de pagamento atrasado ou não realizado. Se não for abordado, informe \"Não abordado\"."
+    },
+    "fallbackPrompt": "Revise cada documento e extraia as informações relevantes para \"{title}\". Forneça um resumo conciso e específico do documento para esta coluna. Inclua os principais fatos, datas, limites, partes e condições quando aplicável. Se o documento não contiver informações relevantes, retorne \"Não abordado\"."
   }
 }

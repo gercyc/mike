@@ -1,22 +1,112 @@
 {
   "initialView": {
     "title": "Como posso ajudar você hoje?",
-    "placeholder": "Pergunte qualquer coisa sobre seus documentos jurídicos..."
+    "placeholder": "Pergunte qualquer coisa sobre seus documentos jurídicos...",
+    "greeting": "Oi, {username}",
+    "greetingFallback": "aí"
   },
   "chatInput": {
     "placeholder": "Mensagem para o Mike...",
     "addDocument": "Adicionar documento",
-    "send": "Enviar"
+    "send": "Enviar",
+    "askPlaceholder": "Faça uma pergunta sobre seus documentos...",
+    "workflows": "Workflows",
+    "projects": "Projetos",
+    "openWorkflows": "Abrir workflows",
+    "openProjects": "Abrir projetos"
   },
   "sidePanel": {
     "title": "Fontes",
-    "noDocuments": "Nenhum documento anexado"
+    "noDocuments": "Nenhum documento anexado",
+    "closePanel": "Fechar painel"
   },
-  "workflow": {
-    "select": "Selecionar workflow",
-    "run": "Executar workflow"
+  "message": {
+    "errorDefault": "Desculpe, algo deu errado.",
+    "thinkingPhrases": [
+      "Pensando...",
+      "Refletindo...",
+      "Analisando...",
+      "Revisando...",
+      "Raciocinando..."
+    ],
+    "thoughtProcess": "Processo de pensamento",
+    "reading": "Lendo",
+    "read": "Lido",
+    "finding": "Buscando",
+    "found": "Encontrado",
+    "matchCount": "({count, plural, one {{count} correspondência} other {{count} correspondências}})",
+    "creating": "Criando",
+    "created": "Criado",
+    "replicating": "Replicando",
+    "replicated": "Replicado",
+    "times": "{count} vezes",
+    "inFilename": "em {filename}",
+    "appliedWorkflow": "Workflow Aplicado",
+    "editing": "Editando",
+    "editFailed": "Falha na edição",
+    "edited": "Editado"
   },
-  "model": {
-    "select": "Selecionar modelo"
-  }
+  "toolCall": {
+    "generateDocx": "Criando documento...",
+    "editDocument": "Editando documento...",
+    "readDocument": "Lendo documento...",
+    "readDocuments": "Lendo documentos...",
+    "findInDocument": "Buscando no documento...",
+    "replicateDocument": "Copiando documento...",
+    "readWorkflow": "Carregando workflow...",
+    "listWorkflows": "Carregando workflows...",
+    "listDocuments": "Carregando documentos...",
+    "running": "Executando {name}...",
+    "working": "Trabalhando..."
+  },
+  "editCard": {
+    "accept": "Aceitar",
+    "accepted": "Aceito",
+    "reject": "Rejeitar",
+    "rejected": "Rejeitado",
+    "view": "Visualizar",
+    "acceptAll": "Aceitar tudo",
+    "rejectAll": "Rejeitar tudo",
+    "resolvedTooltip": "Esta alteração foi resolvida e não está mais no documento.",
+    "saveAcceptError": "Não foi possível salvar a aceitação — revertido.",
+    "saveRejectError": "Não foi possível salvar a rejeição — revertido.",
+    "bulkAcceptError": "Não foi possível salvar uma ou mais aceitações.",
+    "bulkRejectError": "Não foi possível salvar uma ou mais rejeições.",
+    "collapseEdits": "Recolher edições",
+    "expandEdits": "Expandir edições",
+    "pendingTrackedChanges": "{count, plural, one {{count} alteração rastreada} other {{count} alterações rastreadas}}",
+    "pendingTrackedChangesAcrossDocs": "{count} alterações rastreadas em {docCount} documentos",
+    "resolvedTrackedChanges": "{count, plural, one {{count} alteração rastreada resolvida} other {{count} alterações rastreadas resolvidas}}",
+    "resolvedTrackedChangesAcrossDocs": "{count} alterações rastreadas resolvidas em {docCount} documentos"
+  },
+  "addDocButton": {
+    "addDocuments": "Adicionar documentos",
+    "document": "Documento",
+    "documents": "Documentos",
+    "uploading": "Enviando…",
+    "uploadFiles": "Enviar arquivos",
+    "browseAll": "Navegar por todos"
+  },
+  "workflowModal": {
+    "addWorkflow": "Adicionar workflow",
+    "searchPlaceholder": "Buscar workflows…",
+    "noMatches": "Nenhum resultado encontrado",
+    "noWorkflows": "Nenhum workflow de assistente encontrado",
+    "workflowPrompt": "Prompt do Workflow",
+    "noPrompt": "_Nenhum prompt definido._"
+  },
+  "projectModal": {
+    "startChat": "Iniciar Chat em um Projeto",
+    "continue": "Continuar"
+  },
+  "modelToggle": {
+    "apiKeyMissingTitle": "Chave de API ausente para o modelo selecionado",
+    "chooseModel": "Escolher modelo",
+    "apiKeyMissingAria": "Chave de API ausente",
+    "loadingModels": "Carregando modelos…",
+    "searchPlaceholder": "Buscar modelos…",
+    "noModelsMatch": "Nenhum modelo corresponde a \"{search}\"",
+    "free": "grátis"
+  },
+  "disclaimer": "A IA pode cometer erros. As respostas não são aconselhamento jurídico."
 }

@@ -14,7 +14,9 @@
   },
   "ownerOnly": {
     "title": "Owner Access Required",
-    "description": "Only the owner can perform this action."
+    "description": "Only the owner can perform this action.",
+    "descriptionWithAction": "Only the project owner can {action}.",
+    "askOwner": "Contact {ownerEmail} if you need access."
   },
   "deleteChats": {
     "title": "Delete All Chats",

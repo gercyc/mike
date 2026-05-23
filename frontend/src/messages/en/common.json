@@ -31,7 +31,8 @@
     "assistant": "Assistant",
     "account": "Account",
     "tabularReviews": "Tabular Reviews",
-    "language": "Language"
+    "language": "Language",
+    "people": "People"
   },
   "language": {
     "en": "English",

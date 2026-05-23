@@ -9,6 +9,7 @@ import type { MikeWorkflow } from "../shared/types";
 import { listWorkflows } from "@/app/lib/mikeApi";
 import { useBuiltinWorkflows } from "@/contexts/BuiltinWorkflowsContext";
 import { useTranslations } from "next-intl";
+import { useTranslations as useTranslationsAssistant } from "next-intl";
 
 interface Props {
     open: boolean;
@@ -28,6 +29,8 @@ export function AssistantWorkflowModal({
     initialWorkflowId,
 }: Props) {
     const t = useTranslations("workflows");
+    const ta = useTranslationsAssistant("assistant");
+    const tc = useTranslationsAssistant("common");
     const BUILT_IN_WORKFLOWS = useBuiltinWorkflows();
     const [workflows, setWorkflows] = useState<MikeWorkflow[]>([]);
     const [loading, setLoading] = useState(false);
@@ -88,19 +91,19 @@ export function AssistantWorkflowModal({
                     <div className="flex items-center gap-1.5 text-xs text-gray-400">
                         {projectName ? (
                             <>
-                                <span>Projects</span>
+                                <span>{tc("nav.projects")}</span>
                                 <span>›</span>
                                 <span>{projectName}{projectCmNumber ? ` (#${projectCmNumber})` : ""}</span>
                                 <span>›</span>
-                                <span>Assistant</span>
+                                <span>{tc("nav.assistant")}</span>
                                 <span>›</span>
-                                <span>Add workflow</span>
+                                <span>{ta("workflowModal.addWorkflow")}</span>
                             </>
                         ) : (
                             <>
-                                <span>Assistant</span>
+                                <span>{tc("nav.assistant")}</span>
                                 <span>›</span>
-                                <span>Add workflow</span>
+                                <span>{ta("workflowModal.addWorkflow")}</span>
                             </>
                         )}
                     </div>
@@ -117,7 +120,7 @@ export function AssistantWorkflowModal({
                                 <Search className="h-3 w-3 text-gray-400 shrink-0" />
                                 <input
                                     type="text"
-                                    placeholder="Search workflows…"
+                                    placeholder={ta("workflowModal.searchPlaceholder")}
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
                                     className="flex-1 bg-transparent text-xs text-gray-700 placeholder:text-gray-400 outline-none"
@@ -141,7 +144,7 @@ export function AssistantWorkflowModal({
                             </div>
                         ) : filteredWorkflows.length === 0 ? (
                             <p className="px-4 py-8 text-sm text-center text-gray-400">
-                                {search ? "No matches found" : "No assistant workflows found"}
+                                {search ? ta("workflowModal.noMatches") : ta("workflowModal.noWorkflows")}
                             </p>
                         ) : (
                             filteredWorkflows.map((wf) => (
@@ -163,7 +166,7 @@ export function AssistantWorkflowModal({
                     {selected && (
                         <div className={`flex-1 border-l border-gray-100 flex flex-col overflow-hidden px-3 pb-3 transition-opacity duration-200 ${rightVisible ? "opacity-100" : "opacity-0"}`}>
                             <div className="flex items-center justify-between py-3 shrink-0">
-                                <p className="text-xs font-medium text-gray-700">Workflow Prompt</p>
+                                <p className="text-xs font-medium text-gray-700">{ta("workflowModal.workflowPrompt")}</p>
                                 <button onClick={() => setSelected(null)} className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
                                     <ChevronLeft className="h-3.5 w-3.5" />
                                 </button>
@@ -183,7 +186,7 @@ export function AssistantWorkflowModal({
                                         em: ({ children }) => <em className="italic">{children}</em>,
                                     }}
                                 >
-                                    {selected.prompt_md ?? "_No prompt defined._"}
+                                    {selected.prompt_md ?? ta("workflowModal.noPrompt")}
                                 </ReactMarkdown>
                             </div>
                         </div>
@@ -193,7 +196,7 @@ export function AssistantWorkflowModal({
                 {/* Footer */}
                 <div className="border-t border-gray-100 px-4 py-3 flex items-center justify-end gap-2 shrink-0">
                     <button type="button" onClick={onClose} className="rounded-lg px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-100 transition-colors">
-                        Cancel
+                        {tc("actions.cancel")}
                     </button>
                     <button
                         type="button"
