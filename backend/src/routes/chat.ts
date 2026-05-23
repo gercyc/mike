@@ -423,24 +423,26 @@ chatRouter.post("/:chatId/generate-title", requireAuth, async (req, res) => {
 // POST /chat — streaming
 chatRouter.post("/", requireAuth, async (req, res) => {
     const userId = res.locals.userId as string;
-    const {
-        messages,
-        chat_id,
-        project_id,
-        model,
-        editMode,
-        creation_mode,
-        selection,
-    } = req.body as {
-        messages: ChatMessage[];
-        chat_id?: string;
-        project_id?: string;
-        model?: string;
-        /** Composer-time toggles fed into the system prompt suffix. */
-        editMode?: "track" | "comments";
-        creation_mode?: "project" | "this_word_doc";
-        selection?: { text: string; has_selection: boolean };
-    };
+    const body =
+        req.body && typeof req.body === "object" && !Array.isArray(req.body)
+            ? (req.body as Record<string, unknown>)
+            : {};
+    const parsedMessages = parseChatMessages(body.messages);
+    if (!parsedMessages.ok) {
+        return void res.status(400).json({ detail: parsedMessages.detail });
+    }
+    const parsedChatId = parseOptionalChatId(body.chat_id);
+    if (!parsedChatId.ok) {
+        return void res.status(400).json({ detail: parsedChatId.detail });
+    }
+    const parsedProjectId = parseOptionalProjectId(body.project_id);
+    if (!parsedProjectId.ok) {
+        return void res.status(400).json({ detail: parsedProjectId.detail });
+    }
+    const parsedModel = parseOptionalModel(body.model);
+    if (!parsedModel.ok) {
+        return void res.status(400).json({ detail: parsedModel.detail });
+    }
 
     const messages = parsedMessages.messages;
     const chat_id = parsedChatId.chatId;
@@ -510,8 +512,6 @@ chatRouter.post("/", requireAuth, async (req, res) => {
 
     devLog("[chat/stream] resolved chatId", chatId);
 
-    const downstreamMessages = messages;
-
     const lastUser = [...messages].reverse().find((m) => m.role === "user");
     if (lastUser) {
         await db.from("chat_messages").insert({
@@ -524,7 +524,7 @@ chatRouter.post("/", requireAuth, async (req, res) => {
     }
 
     const { docIndex, docStore } = await buildDocContext(
-        downstreamMessages,
+        messages,
         userId,
         db,
         chatId,
@@ -534,29 +534,12 @@ chatRouter.post("/", requireAuth, async (req, res) => {
         filename: info.filename,
     }));
     const enrichedMessages = await enrichWithPriorEvents(
-        downstreamMessages,
+        messages,
         chatId,
         db,
         docIndex,
     );
-    // Composer-time toggles → system-prompt suffix (Hide PII / edit mode /
-    // creation mode / Word selection).
-    const composerSuffix = buildContextSuffix({
-        editMode,
-        creationMode: creation_mode,
-        selection,
-    });
-    console.log("[chat/stream] composer toggles", {
-        editMode,
-        creation_mode,
-        hasSelection: !!selection?.has_selection,
-        suffixChars: composerSuffix.length,
-    });
-    const apiMessages = buildMessages(
-        enrichedMessages,
-        docAvailability,
-        composerSuffix || undefined,
-    );
+    const apiMessages = buildMessages(enrichedMessages, docAvailability);
 
     const workflowStore = await buildWorkflowStore(userId, userEmail, db);
 
@@ -572,9 +555,7 @@ chatRouter.post("/", requireAuth, async (req, res) => {
     res.setHeader("X-Accel-Buffering", "no");
     res.flushHeaders();
 
-    const write = (line: string) => {
-        res.write(line);
-    };
+    const write = (line: string) => res.write(line);
 
     const apiKeys = await getUserApiKeys(userId, db);
 
