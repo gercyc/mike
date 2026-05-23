@@ -1,7 +1,7 @@
 // Mike desktop shell.
 //
 // Spawns the backend and the Next.js frontend, then
-// loads http://127.0.0.1:3000 in a BrowserWindow. Keeps stdout/stderr in
+// loads http://localhost:3000 in a BrowserWindow. Keeps stdout/stderr in
 // per-process ring buffers exposed via the Mike menu, and tears every child
 // down cleanly on quit.
 
@@ -13,7 +13,15 @@ const fs = require("node:fs");
 const http = require("node:http");
 const https = require("node:https");
 
-const REPO_ROOT = path.resolve(__dirname, "..");
+// When packaged with electron-builder, `process.resourcesPath` points to the
+// `resources/` dir inside the installed app. In dev (`electron .`), fall back
+// to the monorepo root so the paths resolve the same way.
+const IS_PACKAGED = app.isPackaged;
+const RESOURCES_ROOT = IS_PACKAGED
+  ? process.resourcesPath
+  : path.resolve(__dirname, "..");
+const REPO_ROOT = IS_PACKAGED ? RESOURCES_ROOT : path.resolve(__dirname, "..");
+
 // Prefer the squircle-masked variant (transparent rounded corners) when
 // `bun run make-icons` has been run — that's what gives the dock icon the
 // soft-corner look that matches every other macOS app. Falls back to the
@@ -37,8 +45,12 @@ function applyDockIcon() {
     }
   }
 }
-const BACKEND_DIR = path.join(REPO_ROOT, "backend");
-const FRONTEND_DIR = path.join(REPO_ROOT, "frontend");
+const BACKEND_DIR = IS_PACKAGED
+  ? path.join(RESOURCES_ROOT, "backend")
+  : path.join(REPO_ROOT, "backend");
+const FRONTEND_DIR = IS_PACKAGED
+  ? path.join(RESOURCES_ROOT, "frontend")
+  : path.join(REPO_ROOT, "frontend");
 const MIKE_HOME = path.join(os.homedir(), ".mike");
 
 const IS_DEV = process.env.MIKE_DEV === "1";
@@ -64,7 +76,7 @@ function mikeUrlToFrontendUrl(rawUrl) {
     const tail = (u.pathname || "").replace(/^\/+/, "");
     const search = u.search || "";
     const route = tail ? `/${head}/${tail}` : `/${head}`;
-    return `http://127.0.0.1:${FRONTEND_PORT}${route}${search}`;
+    return `http://localhost:${FRONTEND_PORT}${route}${search}`;
   } catch {
     return null;
   }
@@ -131,16 +143,54 @@ function resolveBin(dir, name) {
 }
 
 function startBackend() {
+  if (IS_PACKAGED) {
+    // In production the backend is pre-compiled to dist/index.js.
+    // ELECTRON_RUN_AS_NODE=1 makes the Electron binary behave as plain Node.js
+    // so we can run the compiled script without needing a separate node.exe.
+    return spawnService("backend", process.execPath, ["dist/index.js"], {
+      cwd: BACKEND_DIR,
+      env: {
+        ...process.env,
+        ELECTRON_RUN_AS_NODE: "1",
+        NODE_ENV: "production",
+      },
+    });
+  }
   const tsxBin = resolveBin(BACKEND_DIR, "tsx");
   const cmd = tsxBin || "npx";
   const args = tsxBin ? ["src/index.ts"] : ["tsx", "src/index.ts"];
   return spawnService("backend", cmd, args, {
     cwd: BACKEND_DIR,
-    env: { ...process.env, NODE_ENV: IS_DEV ? "development" : "production" },
+    env: { ...process.env, NODE_ENV: "development" },
   });
 }
 
 function startFrontend() {
+  if (IS_PACKAGED) {
+    // In production Next.js emits a standalone server at
+    // .next/standalone/frontend/server.js — run it directly with node.
+    const standaloneServer = path.join(
+      FRONTEND_DIR,
+      ".next",
+      "standalone",
+      "frontend",
+      "server.js",
+    );
+    return spawnService("frontend", process.execPath, [standaloneServer], {
+      cwd: path.dirname(standaloneServer),
+      env: {
+        ...process.env,
+        ELECTRON_RUN_AS_NODE: "1",
+        NODE_ENV: "production",
+        PORT: String(FRONTEND_PORT),
+        HOSTNAME: "localhost",
+        // Tell Next.js middleware to build internal URLs with localhost
+        // instead of "localhost", so rewrites resolve correctly in Electron.
+        __NEXT_PRIVATE_ORIGIN: `http://localhost:${FRONTEND_PORT}`,
+        NEXT_PUBLIC_API_BASE_URL: `http://localhost:${HTTP_PORT}`,
+      },
+    });
+  }
   const nextBin = resolveBin(FRONTEND_DIR, "next");
   const cmd = nextBin || "npx";
   const args = nextBin
@@ -154,8 +204,8 @@ function startFrontend() {
     cwd: FRONTEND_DIR,
     env: {
       ...process.env,
-      NODE_ENV: IS_DEV ? "development" : "production",
-      NEXT_PUBLIC_API_BASE_URL: `http://127.0.0.1:${HTTP_PORT}`,
+      NODE_ENV: "development",
+      NEXT_PUBLIC_API_BASE_URL: `http://localhost:${HTTP_PORT}`,
     },
   });
 }
@@ -254,7 +304,7 @@ async function showPairingCode() {
       const t = localStorage.getItem("mike.token");
       if (!t) return { error: "Sign in to Mike first." };
       try {
-        const r = await fetch("http://127.0.0.1:${HTTP_PORT}/auth/pair/create", {
+        const r = await fetch("http://localhost:${HTTP_PORT}/auth/pair/create", {
           method: "POST",
           headers: { "Authorization": "Bearer " + t, "Content-Type": "application/json" },
         });
@@ -380,8 +430,8 @@ async function boot() {
   fs.mkdirSync(MIKE_HOME, { recursive: true });
   startBackend();
   startFrontend();
-  await waitFor(`http://127.0.0.1:${HTTP_PORT}/health`, "backend");
-  await waitFor(`http://127.0.0.1:${FRONTEND_PORT}/`, "frontend", 60000);
+  await waitFor(`http://localhost:${HTTP_PORT}/health`, "backend");
+  await waitFor(`http://localhost:${FRONTEND_PORT}/`, "frontend", 60000);
 }
 
 // ---------------------------------------------------------------------------
@@ -400,7 +450,7 @@ function startDesktopBridge() {
     if (stopped) return;
     controller = new AbortController();
     try {
-      const res = await fetch(`http://127.0.0.1:${HTTP_PORT}/events`, {
+      const res = await fetch(`http://localhost:${HTTP_PORT}/events`, {
         headers: {
           "x-mike-loopback": "1",
           Accept: "text/event-stream",
@@ -465,7 +515,7 @@ function startDesktopBridge() {
 }
 
 function handleDesktopNavigate(route) {
-  const target = `http://127.0.0.1:${FRONTEND_PORT}${route}`;
+  const target = `http://localhost:${FRONTEND_PORT}${route}`;
   let win = BrowserWindow.getAllWindows()[0];
   if (!win) {
     win = createWindow();
@@ -498,13 +548,13 @@ function createWindow() {
   // Trust our own self-signed cert for the loopback HTTPS listener so the
   // renderer can make API calls there without a warning. Loopback only.
   win.webContents.session.setCertificateVerifyProc((req, cb) => {
-    if (req.hostname === "127.0.0.1" || req.hostname === "localhost") {
+    if (req.hostname === "localhost" || req.hostname === "localhost") {
       cb(0);
     } else {
       cb(-3); // use Chromium's default verification
     }
   });
-  win.loadURL(`http://127.0.0.1:${FRONTEND_PORT}`);
+  win.loadURL(`http://localhost:${FRONTEND_PORT}`);
   return win;
 }
 

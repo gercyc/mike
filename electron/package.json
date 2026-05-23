@@ -9,11 +9,12 @@
     "start": "electron .",
     "start:dev": "MIKE_DEV=1 electron .",
     "make-icons": "node scripts/make-icons.js",
-    "package": "electron-builder --dir",
-    "dist": "electron-builder"
+    "prepare-dist": "node scripts/prepare-dist.js",
+    "package": "node scripts/prepare-dist.js && electron-builder --dir",
+    "dist": "node scripts/prepare-dist.js && electron-builder"
   },
   "devDependencies": {
-    "electron": "^42.2.0",
+    "electron": "^35.5.0",
     "electron-builder": "^26.8.1",
     "sharp": "^0.33.5"
   },
@@ -30,14 +31,34 @@
     ],
     "extraResources": [
       {
-        "from": "../backend",
-        "to": "backend",
-        "filter": ["**/*", "!node_modules/.cache"]
+        "from": "../backend/dist",
+        "to": "backend/dist"
       },
       {
-        "from": "../frontend/.next",
-        "to": "frontend/.next",
-        "filter": ["**/*", "!standalone/node_modules/.bun/**", "!standalone/node_modules/.cache/**", "!standalone/frontend/node_modules/**"]
+        "from": "../backend/migrations",
+        "to": "backend/migrations"
+      },
+      {
+        "from": "../backend/package.json",
+        "to": "backend/package.json"
+      },
+      {
+        "from": "../backend/node_modules",
+        "to": "backend/node_modules",
+        "filter": ["**/*", "!**/.bin/**", "!**/.cache/**"]
+      },
+      {
+        "from": "../frontend/.next/standalone",
+        "to": "frontend/.next/standalone",
+        "filter": ["**/*", "!**/node_modules/.bun/**", "!**/node_modules/.cache/**"]
+      },
+      {
+        "from": "../frontend/.next/static",
+        "to": "frontend/.next/static"
+      },
+      {
+        "from": "../frontend/.next/BUILD_ID",
+        "to": "frontend/.next/BUILD_ID"
       },
       {
         "from": "../frontend/public",

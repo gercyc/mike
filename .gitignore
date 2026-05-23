@@ -17,3 +17,5 @@ next-env.d.ts
 .vercel
 coverage
 docker-compose-homelab.yml
+.dist-tmp-backend
+.idea

@@ -18,7 +18,7 @@
         "@mike/shared": "workspace:*",
         "@supabase/supabase-js": "^2.49.4",
         "bcryptjs": "^2.4.3",
-        "better-sqlite3": "^11.5.0",
+        "better-sqlite3": "^12.10.0",
         "cookie-parser": "^1.4.7",
         "cors": "^2.8.5",
         "docx": "^9.5.0",
@@ -1807,7 +1807,7 @@
 
     "bcryptjs": ["bcryptjs@2.4.3", "", {}, "sha512-V/Hy/X9Vt7f3BbPJEi8BdVFMByHi+jNXrYkW3huaybV/kQ0KJg0Y6PkEMbn+zeT+i+SiKZ/HMqJGIIt4LZDqNQ=="],
 
-    "better-sqlite3": ["better-sqlite3@11.10.0", "", { "dependencies": { "bindings": "^1.5.0", "prebuild-install": "^7.1.1" } }, "sha512-EwhOpyXiOEL/lKzHz9AW1msWFNzGc/z+LzeB3/jnFJpxu+th2yqvzsSWas1v9jgs9+xiXJcD5A8CJxAG2TaghQ=="],
+    "better-sqlite3": ["better-sqlite3@12.10.0", "", { "dependencies": { "bindings": "^1.5.0", "prebuild-install": "^7.1.1" } }, "sha512-CyzaZRQKyHkB2ZInfTTl2nvT33EbDpjkLEbE8/Zck3Ll6O0qqvuGdrJ45HgtH+HykRg88ITY3AdreBGN70aBSQ=="],
 
     "big-integer": ["big-integer@1.6.52", "", {}, "sha512-QxD8cf2eVqJOOz63z6JIN9BzvVs/dlySa5HGSBH5xtR8dPteIRQnBxxKqkNTiT6jbDTF6jAfrd4oMcND9RGbQg=="],
 

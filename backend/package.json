@@ -13,7 +13,7 @@
     "@google/genai": "^1.50.1",
     "@supabase/supabase-js": "^2.49.4",
     "bcryptjs": "^2.4.3",
-    "better-sqlite3": "^11.5.0",
+    "better-sqlite3": "^12.10.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "docx": "^9.5.0",
