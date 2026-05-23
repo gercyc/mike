@@ -1,0 +1,25 @@
+{
+  "name": "@mike/mcp-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MCP server exposing Mike projects, documents, chats, and workflows to external agents (Claude Desktop, Cursor, custom scripts).",
+  "main": "./dist/index.js",
+  "bin": {
+    "mike-mcp": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@mike/shared": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.18.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.1",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.3"
+  }
+}

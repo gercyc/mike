@@ -1,0 +1,34 @@
+-- Phase 3 — Per-user AI provider keys.
+-- Stored as a JSONB blob whose values are encrypted (AES-256-GCM, see
+-- backend/src/lib/secrets.ts). Old single-provider columns are kept for
+-- backwards compat during the rollout and can be dropped once every chat
+-- path has migrated to the new resolver.
+ALTER TABLE user_profiles
+  ADD COLUMN IF NOT EXISTS ai_keys jsonb NOT NULL DEFAULT '{}'::jsonb;
+
+-- Phase 4 — MCP tokens. Each token is a long-lived bearer credential issued
+-- to a specific external agent (Claude Desktop, Cursor, custom script) and
+-- scoped to one Mike user.
+CREATE TABLE IF NOT EXISTS mcp_tokens (
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id      uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  label        text NOT NULL,
+  -- SHA-256 of the secret. The plaintext is shown to the user once at
+  -- creation and never persisted.
+  secret_hash  text NOT NULL UNIQUE,
+  -- Last 6 chars of the secret, kept for display ("...a3f9").
+  preview      text NOT NULL,
+  scope        text NOT NULL CHECK (scope IN ('read', 'read_write')),
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  last_used_at timestamptz
+);
+
+CREATE INDEX IF NOT EXISTS mcp_tokens_user_id_idx ON mcp_tokens(user_id);
+
+-- Row-level security: users can only see their own tokens. Service role
+-- (used by the backend) bypasses RLS, so this is mostly defense-in-depth
+-- in case the backend ever calls with the anon key.
+ALTER TABLE mcp_tokens ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS mcp_tokens_self_select ON mcp_tokens;
+CREATE POLICY mcp_tokens_self_select ON mcp_tokens
+  FOR SELECT USING (user_id = auth.uid());

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import crypto from "node:crypto";
 import { requireAuth } from "../middleware/auth";
 import { createServerSupabase } from "../lib/supabase";
 import {
@@ -13,6 +14,7 @@ import {
 } from "../lib/chatTools";
 import { getUserApiKeys } from "../lib/userSettings";
 import { checkProjectAccess } from "../lib/access";
+import { buildContextSuffix } from "../lib/contextSuffix";
 
 const PROJECT_SYSTEM_PROMPT_EXTRA = `PROJECT CONTEXT:
 You are operating within a project folder that contains a collection of legal documents the user has organised for a single matter. The user's questions will usually refer to one or more documents in this project — your job is to find the relevant files to work on. Use list_documents to see what is available and fetch_documents / read_document to pull in any documents you need before answering.
@@ -29,14 +31,25 @@ projectChatRouter.post("/", requireAuth, async (req, res) => {
     const userId = res.locals.userId as string;
     const userEmail = res.locals.userEmail as string | undefined;
     const { projectId } = req.params;
-    const { messages, chat_id, model, displayed_doc, attached_documents } =
-        req.body as {
-            messages: ChatMessage[];
-            chat_id?: string;
-            model?: string;
-            displayed_doc?: { filename: string; document_id: string };
-            attached_documents?: { filename: string; document_id: string }[];
-        };
+    const {
+        messages,
+        chat_id,
+        model,
+        displayed_doc,
+        attached_documents,
+        editMode,
+        creation_mode,
+        selection,
+    } = req.body as {
+        messages: ChatMessage[];
+        chat_id?: string;
+        model?: string;
+        displayed_doc?: { filename: string; document_id: string };
+        attached_documents?: { filename: string; document_id: string }[];
+        editMode?: "track" | "comments";
+        creation_mode?: "project" | "this_word_doc";
+        selection?: { text: string; has_selection: boolean };
+    };
 
     const db = createServerSupabase();
 
@@ -122,7 +135,16 @@ projectChatRouter.post("/", requireAuth, async (req, res) => {
     // the system prompt with the current-turn doc_id slugs so the model
     // knows which docs the user is highlighting *now*, distinct from
     // the broader project doc list.
-    let systemPromptExtra = PROJECT_SYSTEM_PROMPT_EXTRA;
+    // Composer-time toggles (Hide PII / edit mode / creation mode / selection)
+    // become a small extra block appended to the system prompt for this turn.
+    const contextSuffix = buildContextSuffix({
+        editMode,
+        creationMode: creation_mode,
+        selection,
+    });
+    let systemPromptExtra = contextSuffix
+        ? `${PROJECT_SYSTEM_PROMPT_EXTRA}\n\n${contextSuffix}`
+        : PROJECT_SYSTEM_PROMPT_EXTRA;
     if (attached_documents?.length) {
         const slugByDocumentId = new Map<string, string>();
         for (const [slug, info] of Object.entries(docIndex)) {
@@ -150,7 +172,9 @@ projectChatRouter.post("/", requireAuth, async (req, res) => {
     res.setHeader("X-Accel-Buffering", "no");
     res.flushHeaders();
 
-    const write = (line: string) => res.write(line);
+    const write = (line: string) => {
+        res.write(line);
+    };
 
     const apiKeys = await getUserApiKeys(userId, db);
 

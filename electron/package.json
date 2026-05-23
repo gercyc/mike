@@ -1,0 +1,61 @@
+{
+  "name": "@mike/electron",
+  "productName": "Mike",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mike desktop shell — auto-boots backend + Presidio + frontend.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "start:dev": "MIKE_DEV=1 electron .",
+    "make-icons": "node scripts/make-icons.js",
+    "package": "electron-builder --mac --dir",
+    "dist": "electron-builder --mac"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "sharp": "^0.33.5"
+  },
+  "build": {
+    "appId": "com.mikelegal.desktop",
+    "productName": "Mike",
+    "files": [
+      "main.js",
+      "icon.png",
+      "build/**/*",
+      "!**/node_modules/.cache",
+      "!**/*.{md,log}"
+    ],
+    "extraResources": [
+      {
+        "from": "../backend",
+        "to": "backend",
+        "filter": ["**/*", "!node_modules/.cache"]
+      },
+      {
+        "from": "../frontend/.next",
+        "to": "frontend/.next"
+      },
+      {
+        "from": "../frontend/public",
+        "to": "frontend/public"
+      },
+      {
+        "from": "../word-addin/dist",
+        "to": "word-addin/dist"
+      }
+    ],
+    "mac": {
+      "icon": "build/icon.icns",
+      "category": "public.app-category.productivity",
+      "target": ["dmg", "zip"]
+    },
+    "win": {
+      "icon": "build/icon.ico"
+    },
+    "linux": {
+      "icon": "build/icons"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "name": "mike-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "workspaces": [
+    "packages/*",
+    "backend",
+    "frontend",
+    "word-addin"
+  ],
+  "scripts": {
+    "dev:backend": "bun --filter @mike/backend dev",
+    "dev:frontend": "bun --filter @mike/frontend dev",
+    "dev:addin": "bun --filter @mike/word-addin dev",
+    "build:shared": "bun --filter @mike/shared build",
+    "build:backend": "bun --filter @mike/backend build",
+    "build:frontend": "bun --filter @mike/frontend build",
+    "build:all": "bun --filter '*' build",
+    "mcp:dev": "bun --filter @mike/mcp-server dev",
+    "mcp:build": "bun --filter @mike/mcp-server build"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "prettier": "^3.8.1"
+  }
+}

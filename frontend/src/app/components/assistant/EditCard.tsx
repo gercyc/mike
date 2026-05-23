@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { supabase } from "@/lib/supabase";
+import { authHeader } from "@/lib/mikeAuth";
 import type { MikeEditAnnotation } from "../shared/types";
 
 function normalizeText(s: string) {
@@ -242,19 +242,13 @@ export function EditCard({
             console.error("[EditCard] optimistic update threw", e);
         }
         try {
-            const {
-                data: { session },
-            } = await supabase.auth.getSession();
-            const token = session?.access_token;
             const apiBase =
                 process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
             const resp = await fetch(
                 `${apiBase}/single-documents/${annotation.document_id}/edits/${annotation.edit_id}/${verb}`,
                 {
                     method: "POST",
-                    headers: token
-                        ? { Authorization: `Bearer ${token}` }
-                        : undefined,
+                    headers: authHeader(),
                 },
             );
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);

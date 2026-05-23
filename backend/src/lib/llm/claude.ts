@@ -18,7 +18,11 @@ type NativeMessage = {
     content: string | ContentBlock[];
 };
 
-const MAX_TOKENS = 16384;
+// Claude Sonnet/Opus 4.x support up to 64K output tokens. The previous 16K
+// cap was hitting users mid-review on long contracts — the model would burn
+// through it on tracked-change suggestions and the stream would end mid-JSON,
+// which the renderer hides as an unclosed fence (blank chat bubble).
+const MAX_TOKENS = 64000;
 
 function apiKey(override?: string | null): string {
     const key = override?.trim() || process.env.ANTHROPIC_API_KEY?.trim() || "";

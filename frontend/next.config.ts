@@ -19,6 +19,7 @@ const nextConfig: NextConfig = {
         ];
     },
     skipTrailingSlashRedirect: true,
+    transpilePackages: ["@mike/shared"],
 };
 
 export default withNextIntl(nextConfig);

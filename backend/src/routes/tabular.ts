@@ -408,19 +408,12 @@ tabularRouter.get("/:reviewId/people", requireAuth, async (req, res) => {
             : []
     ).map((e) => (e ?? "").toLowerCase());
 
-    // Same pattern as /projects/:id/people: walk auth.users to map emails
-    // to user_ids, then pull display_names from user_profiles by user_id.
-    const { data: usersData } = await db.auth.admin.listUsers({
-        perPage: 1000,
-    });
-    const allUsers = usersData?.users ?? [];
+    // LOCAL-MIGRATION: single-user local mode — the only "user" is "local".
     const userByEmail = new Map<string, { id: string; email: string }>();
     const userById = new Map<string, { id: string; email: string }>();
-    for (const u of allUsers) {
-        if (!u.email) continue;
-        const lower = u.email.toLowerCase();
-        userByEmail.set(lower, { id: u.id, email: u.email });
-        userById.set(u.id, { id: u.id, email: u.email });
+    if (userEmail) {
+        userByEmail.set(userEmail.toLowerCase(), { id: "local", email: userEmail });
+        userById.set("local", { id: "local", email: userEmail });
     }
 
     const memberUserIds: string[] = [];

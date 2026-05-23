@@ -75,6 +75,57 @@ export const BUILTIN_WORKFLOWS_EN: { id: string; title: string; prompt_md: strin
             "15. **Governing Law & Dispute Resolution** — Applicable law, forum, arbitration or litigation, and any mandatory escalation steps\n\n" +
             "Generate the summary as a downloadable Word document.",
     },
+    {
+        id: "builtin-red-flag-scan",
+        title: "Red-Flag Scan",
+        prompt_md:
+            "## Red-Flag Scan (Kırmızı Bayrak Taraması)\n\n" +
+            "Scan the active document for clauses that deviate from market standard, are aggressive against the user's likely position, or contain unusual risk allocations. " +
+            "Unless the document context clearly indicates otherwise, assume the user is on the receiving / less-protected side (e.g. buyer, borrower, employee, licensee, tenant).\n\n" +
+            "Look in particular for:\n" +
+            "- Unlimited liability or absence of a liability cap\n" +
+            "- Broad or one-way indemnification obligations\n" +
+            "- Unilateral termination, suspension, or amendment rights\n" +
+            "- Change-of-control or assignment triggers without consent / cure\n" +
+            "- Non-standard governing law or exclusive foreign jurisdiction / arbitration seats\n" +
+            "- Missing or weak limitation-of-liability, force-majeure, or dispute-resolution clauses\n" +
+            "- Vague or open-ended performance / service-level obligations\n" +
+            "- Automatic renewal traps, evergreen terms, or hard-to-exit notice windows\n" +
+            "- Unusual fee shifting, penalty interest, liquidated damages, or set-off rights\n" +
+            "- IP assignments, broad licenses, or moral-rights waivers tilted against the user\n" +
+            "- Confidentiality / non-compete / non-solicit obligations that are overly broad in scope, geography, or duration\n\n" +
+            "Output format:\n" +
+            "1. A short executive summary (2-4 sentences) describing the overall risk posture of the document.\n" +
+            "2. A bulleted list of the top 3 highest-severity issues, each with a one-line headline and a 2-3 sentence plain-English explanation referencing the clause/section if locatable.\n" +
+            "3. At the very end of your response, append a fenced JSON code block in EXACTLY this shape (no other JSON blocks):\n" +
+            "```json\n" +
+            "{\"red_flags\":[{\"severity\":\"high|medium|low\",\"title\":\"...\",\"summary\":\"2-3 sentence plain-English explanation\",\"location\":\"clause/section reference if known\"}]}\n" +
+            "```\n" +
+            "Limit the JSON `red_flags` array to at most 3 entries — only the highest-severity issues. " +
+            "Use \"high\" for issues that materially shift risk to the user, \"medium\" for non-market terms with meaningful exposure, \"low\" for stylistic or minor deviations. " +
+            "Do NOT call generate_docx — keep the response inline.",
+    },
+    {
+        id: "builtin-defined-terms",
+        title: "Check Defined Terms",
+        prompt_md:
+            "## Defined Terms Checker (Tanımlanmış Terim İzleyici)\n\n" +
+            "Read the Definitions / Interpretation section of the active document and build an internal map of each defined term (e.g. \"Company\", \"Agreement\", \"Effective Date\"). " +
+            "Then scan the rest of the document and flag, in order of importance:\n" +
+            "(a) **Inconsistent capitalization** — places where a defined term appears with the wrong case (e.g. \"company\" or \"AGREEMENT\" when the defined form is \"Company\" / \"Agreement\").\n" +
+            "(b) **Undefined capitalized phrases** — title-cased phrases used as if they were defined (e.g. \"Material Adverse Effect\", \"Permitted Encumbrance\") that do NOT appear in the Definitions section.\n" +
+            "(c) **Missing definitions** — defined-style terms referenced in the operative clauses but never actually defined.\n\n" +
+            "Ignore: proper nouns (company names, person names, jurisdictions), section/schedule references (\"Section 5.2\", \"Schedule A\"), and obvious sentence-start capitalizations.\n\n" +
+            "Output format:\n" +
+            "1. A 1-2 sentence summary of how clean the defined-term usage is overall.\n" +
+            "2. A short bulleted list of the most important issues, each with the term, the kind of issue, and a brief detail referencing the clause/section if locatable.\n" +
+            "3. At the very end of your response, append a fenced JSON code block in EXACTLY this shape (no other JSON blocks):\n" +
+            "```json\n" +
+            "{\"defined_terms_issues\":[{\"term\":\"...\",\"issue\":\"missing_definition|inconsistent_case|undefined_capitalized\",\"detail\":\"short explanation\",\"location\":\"clause/section reference if known\"}]}\n" +
+            "```\n" +
+            "Limit the JSON `defined_terms_issues` array to at most 10 entries. " +
+            "Do NOT call generate_docx — keep the response inline.",
+    },
 ];
 
 export const BUILTIN_WORKFLOWS = [

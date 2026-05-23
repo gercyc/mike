@@ -155,6 +155,13 @@ workflowsRouter.get("/", requireAuth, asyncRoute(async (req, res) => {
       const sharerIds = [...new Set(shares.map((s) => s.shared_by_user_id).filter(Boolean))];
       const sharerNames = await loadSharerNames(db, sharerIds);
 
+
+      // LOCAL-MIGRATION: single-user local mode — synthesize a stub auth
+      // users list with just the local user so the lookup below still works.
+      const authUsers: { id: string; email: string }[] = [
+        { id: "local", email: userEmail || "" },
+      ];
+
       sharedWorkflows = wfs.map((wf) => {
         const share = shares.find((s) => s.workflow_id === wf.id);
         const sharerId = share?.shared_by_user_id;
