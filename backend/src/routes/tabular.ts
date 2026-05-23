@@ -127,7 +127,7 @@ tabularRouter.get("/", requireAuth, async (req, res) => {
             ? db
                   .from("tabular_reviews")
                   .select("*")
-                  .filter("shared_with", "cs", JSON.stringify([userEmail]))
+                  .contains("shared_with", JSON.stringify([userEmail]))
                   .neq("user_id", userId)
                   .order("created_at", { ascending: false })
             : Promise.resolve({

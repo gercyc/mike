@@ -177,7 +177,7 @@ export async function listAccessibleProjectIds(
             ? db
                   .from("projects")
                   .select("id")
-                  .filter("shared_with", "cs", JSON.stringify([userEmail]))
+                  .contains("shared_with", [userEmail])
                   .neq("user_id", userId)
             : Promise.resolve({ data: [] as { id: string }[] }),
     ]);

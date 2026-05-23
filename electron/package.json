@@ -9,8 +9,8 @@
     "start": "electron .",
     "start:dev": "MIKE_DEV=1 electron .",
     "make-icons": "node scripts/make-icons.js",
-    "package": "electron-builder --mac --dir",
-    "dist": "electron-builder --mac"
+    "package": "electron-builder --dir",
+    "dist": "electron-builder"
   },
   "devDependencies": {
     "electron": "^33.2.0",

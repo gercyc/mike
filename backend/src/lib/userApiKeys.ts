@@ -119,7 +119,7 @@ export async function getUserApiKeyStatus(
         .from("user_api_keys")
         .select("provider")
         .eq("user_id", userId);
-    if (error) throw error;
+    if (error) throw new Error(error.message);
 
     for (const row of data ?? []) {
         const provider = normalizeApiKeyProvider(String(row.provider));
@@ -147,7 +147,7 @@ export async function getUserApiKeys(
         .from("user_api_keys")
         .select("provider, encrypted_key, iv, auth_tag")
         .eq("user_id", userId);
-    if (error) throw error;
+    if (error) throw new Error(error.message);
 
     for (const row of (data ?? []) as EncryptedKeyRow[]) {
         const provider = normalizeApiKeyProvider(row.provider);
@@ -172,7 +172,7 @@ export async function saveUserApiKey(
             .delete()
             .eq("user_id", userId)
             .eq("provider", provider);
-        if (error) throw error;
+        if (error) throw new Error(error.message);
         return;
     }
 
@@ -185,5 +185,5 @@ export async function saveUserApiKey(
         },
         { onConflict: "user_id,provider" },
     );
-    if (error) throw error;
+    if (error) throw new Error(error.message);
 }
