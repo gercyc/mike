@@ -5,6 +5,7 @@ import { DEFAULT_TABULAR_MODEL, resolveModel } from "../lib/llm";
 import {
   type ApiKeyStatus,
   getUserApiKeyStatus,
+  getUserApiKeys,
   hasEnvApiKey,
   normalizeApiKeyProvider,
   saveUserApiKey,
@@ -250,6 +251,66 @@ userRouter.put("/api-keys/:provider", requireAuth, async (req, res) => {
       error: err instanceof Error ? err.message : String(err),
     });
     res.status(500).json({ detail: "Failed to save API key" });
+  }
+});
+
+type OpenRouterModelRaw = {
+  id: string;
+  name?: string;
+  description?: string;
+  context_length?: number;
+  pricing?: { prompt: string; completion: string };
+};
+
+function extraModelIds(): Set<string> {
+  const raw = process.env.OPENROUTER_EXTRA_MODELS?.trim() ?? "";
+  if (!raw) return new Set();
+  return new Set(raw.split(",").map((s) => s.trim()).filter(Boolean));
+}
+
+function isFree(m: OpenRouterModelRaw): boolean {
+  return m.pricing?.prompt === "0" && m.pricing?.completion === "0";
+}
+
+// GET /user/openrouter-models
+userRouter.get("/openrouter-models", requireAuth, async (_req, res) => {
+  const userId = res.locals.userId as string;
+  const db = createServerSupabase();
+  try {
+    const keys = await getUserApiKeys(userId, db);
+    const apiKey = keys.openrouter?.trim();
+    if (!apiKey) {
+      return void res.json({ data: [] });
+    }
+
+    const response = await fetch("https://openrouter.ai/api/v1/models", {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      return void res.status(502).json({
+        detail: `OpenRouter returned ${response.status}: ${text || response.statusText}`,
+      });
+    }
+
+    const json = await response.json() as { data?: OpenRouterModelRaw[] };
+    const all = json.data ?? [];
+    const extras = extraModelIds();
+
+    const filtered = all.filter((m) => isFree(m) || extras.has(m.id));
+
+    // Free models first, then extras alphabetically
+    filtered.sort((a, b) => {
+      const aFree = isFree(a) ? 0 : 1;
+      const bFree = isFree(b) ? 0 : 1;
+      if (aFree !== bFree) return aFree - bFree;
+      return (a.name ?? a.id).localeCompare(b.name ?? b.id);
+    });
+
+    return void res.json({ data: filtered });
+  } catch (err) {
+    console.error("[user/openrouter-models] fetch failed", err);
+    res.status(500).json({ detail: "Failed to fetch OpenRouter models" });
   }
 });
 

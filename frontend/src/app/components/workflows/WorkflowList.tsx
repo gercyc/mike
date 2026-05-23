@@ -358,7 +358,7 @@ export function WorkflowList() {
     );
 
     return (
-        <div className="flex flex-col flex-1 overflow-hidden bg-white">
+        <div className="flex flex-col h-full overflow-hidden bg-white">
             {/* Page header */}
             <div className="mb-1 flex items-center justify-between px-4 py-3 md:px-10 shrink-0">
                 <h1 className="text-2xl font-medium font-serif text-gray-900">

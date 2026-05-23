@@ -1,4 +1,6 @@
-export const BUILTIN_WORKFLOWS: { id: string; title: string; prompt_md: string }[] = [
+import { BUILTIN_WORKFLOWS_PTBR } from "./builtinWorkflowsPtBr";
+
+export const BUILTIN_WORKFLOWS_EN: { id: string; title: string; prompt_md: string }[] = [
     {
         id: "builtin-cp-checklist",
         title: "Generate CP Checklist",
@@ -73,4 +75,9 @@ export const BUILTIN_WORKFLOWS: { id: string; title: string; prompt_md: string }
             "15. **Governing Law & Dispute Resolution** — Applicable law, forum, arbitration or litigation, and any mandatory escalation steps\n\n" +
             "Generate the summary as a downloadable Word document.",
     },
+];
+
+export const BUILTIN_WORKFLOWS = [
+    ...BUILTIN_WORKFLOWS_EN,
+    ...BUILTIN_WORKFLOWS_PTBR,
 ];

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { AlertCircle, Check, ChevronDown, Eye, EyeOff } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { AlertCircle, Check, ChevronDown, Eye, EyeOff, Loader2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,13 +13,14 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useUserProfile } from "@/contexts/UserProfileContext";
-import type { ApiKeyState } from "@/app/lib/mikeApi";
-import { MODELS } from "@/app/components/assistant/ModelToggle";
+import type { ApiKeyState, OpenRouterModel } from "@/app/lib/mikeApi";
+import { STATIC_MODELS } from "@/app/components/assistant/ModelToggle";
 import {
     isModelAvailable,
     modelGroupToProvider,
     providerLabel,
 } from "@/app/lib/modelAvailability";
+import { useOpenRouterModels } from "@/app/hooks/useOpenRouterModels";
 
 const API_KEY_FIELDS = [
     {
@@ -36,6 +37,11 @@ const API_KEY_FIELDS = [
         provider: "openai",
         label: "OpenAI API Key",
         placeholder: "sk-…",
+    },
+    {
+        provider: "openrouter",
+        label: "OpenRouter API Key",
+        placeholder: "sk-or-…",
     },
 ] as const;
 
@@ -120,6 +126,16 @@ export default function ModelsAndApiKeysPage() {
     );
 }
 
+function isFreeModel(m: OpenRouterModel): boolean {
+    return m.pricing?.prompt === "0" && m.pricing?.completion === "0";
+}
+
+const STATIC_GROUP_ORDER: ("Anthropic" | "Google" | "OpenAI")[] = [
+    "Anthropic",
+    "Google",
+    "OpenAI",
+];
+
 function TabularModelDropdown({
     value,
     onChange,
@@ -130,16 +146,43 @@ function TabularModelDropdown({
     apiKeys?: ApiKeyState;
 }) {
     const [isOpen, setIsOpen] = useState(false);
-    const selected = MODELS.find((m) => m.id === value);
+    const [orSearch, setOrSearch] = useState("");
+    const searchRef = useRef<HTMLInputElement>(null);
+    const { state: orState, load: loadOpenRouterModels } = useOpenRouterModels();
+    const openRouterAvailable = apiKeys ? !!apiKeys.openrouter?.configured : true;
+
+    const allOrModels = orState.status === "loaded" ? orState.models : [];
+    const q = orSearch.trim().toLowerCase();
+    const filteredOrModels = q
+        ? allOrModels.filter(
+              (m) =>
+                  (m.name ?? m.id).toLowerCase().includes(q) ||
+                  m.id.toLowerCase().includes(q),
+          )
+        : allOrModels;
+
+    const selectedStatic = STATIC_MODELS.find((m) => m.id === value);
+    const selectedOrModel = allOrModels.find((m) => m.id === value);
+    const selectedLabel =
+        selectedStatic?.label ??
+        (selectedOrModel ? (selectedOrModel.name ?? selectedOrModel.id) : null) ??
+        value;
     const selectedAvailable = apiKeys ? isModelAvailable(value, apiKeys) : true;
-    const groups: ("Anthropic" | "Google" | "OpenAI")[] = [
-        "Anthropic",
-        "Google",
-        "OpenAI",
-    ];
+
+    function handleOpenChange(open: boolean) {
+        setIsOpen(open);
+        if (open && openRouterAvailable) loadOpenRouterModels();
+        if (!open) setOrSearch("");
+    }
+
+    useEffect(() => {
+        if (isOpen && orState.status === "loaded") {
+            setTimeout(() => searchRef.current?.focus(), 50);
+        }
+    }, [isOpen, orState.status]);
 
     return (
-        <DropdownMenu onOpenChange={setIsOpen}>
+        <DropdownMenu onOpenChange={handleOpenChange}>
             <DropdownMenuTrigger asChild>
                 <button
                     type="button"
@@ -149,9 +192,7 @@ function TabularModelDropdown({
                         {!selectedAvailable && (
                             <AlertCircle className="h-3.5 w-3.5 shrink-0 text-red-500" />
                         )}
-                        <span className="truncate text-gray-900">
-                            {selected?.label ?? "Select a model"}
-                        </span>
+                        <span className="truncate text-gray-900">{selectedLabel}</span>
                     </span>
                     <ChevronDown
                         className={`h-3.5 w-3.5 shrink-0 text-gray-500 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
@@ -159,52 +200,120 @@ function TabularModelDropdown({
                 </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
-                className="z-50"
+                className="z-50 max-h-[400px] flex flex-col overflow-hidden"
                 style={{ width: "var(--radix-dropdown-menu-trigger-width)" }}
                 align="start"
             >
-                {groups.map((group, gi) => {
-                    const items = MODELS.filter((m) => m.group === group);
-                    if (items.length === 0) return null;
-                    return (
-                        <div key={group}>
-                            {gi > 0 && <DropdownMenuSeparator />}
-                            <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-gray-400">
-                                {group}
-                            </DropdownMenuLabel>
-                            {items.map((m) => {
-                                const provider = modelGroupToProvider(m.group);
-                                const available = apiKeys
-                                    ? isModelAvailable(m.id, apiKeys)
-                                    : true;
-                                return (
-                                    <DropdownMenuItem
-                                        key={m.id}
-                                        className="cursor-pointer"
-                                        onSelect={() => onChange(m.id)}
-                                        title={
-                                            !available
-                                                ? `Add a ${providerLabel(provider)} API key to use this model`
-                                                : undefined
-                                        }
-                                    >
-                                        <span
-                                            className={`flex-1 ${available ? "" : "text-gray-400"}`}
+                {/* Static providers */}
+                <div className="overflow-y-auto">
+                    {STATIC_GROUP_ORDER.map((group, gi) => {
+                        const items = STATIC_MODELS.filter((m) => m.group === group);
+                        if (items.length === 0) return null;
+                        return (
+                            <div key={group}>
+                                {gi > 0 && <DropdownMenuSeparator />}
+                                <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-gray-400">
+                                    {group}
+                                </DropdownMenuLabel>
+                                {items.map((m) => {
+                                    const provider = modelGroupToProvider(m.group);
+                                    const available = apiKeys
+                                        ? isModelAvailable(m.id, apiKeys)
+                                        : true;
+                                    return (
+                                        <DropdownMenuItem
+                                            key={m.id}
+                                            className="cursor-pointer"
+                                            onSelect={() => onChange(m.id)}
+                                            title={
+                                                !available
+                                                    ? `Add a ${providerLabel(provider)} API key to use this model`
+                                                    : undefined
+                                            }
                                         >
-                                            {m.label}
-                                        </span>
-                                        {!available && (
-                                            <AlertCircle className="h-3.5 w-3.5 text-red-500 ml-1" />
-                                        )}
-                                        {m.id === value && available && (
-                                            <Check className="h-3.5 w-3.5 text-gray-600 ml-1" />
-                                        )}
-                                    </DropdownMenuItem>
-                                );
-                            })}
-                        </div>
-                    );
-                })}
+                                            <span className={`flex-1 ${available ? "" : "text-gray-400"}`}>
+                                                {m.label}
+                                            </span>
+                                            {!available && (
+                                                <AlertCircle className="h-3.5 w-3.5 text-red-500 ml-1" />
+                                            )}
+                                            {m.id === value && available && (
+                                                <Check className="h-3.5 w-3.5 text-gray-600 ml-1" />
+                                            )}
+                                        </DropdownMenuItem>
+                                    );
+                                })}
+                            </div>
+                        );
+                    })}
+                </div>
+
+                {/* OpenRouter section */}
+                {openRouterAvailable && (
+                    <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-gray-400 shrink-0">
+                            OpenRouter
+                        </DropdownMenuLabel>
+
+                        {orState.status === "loading" && (
+                            <div className="flex items-center gap-2 px-2 py-1.5 text-xs text-gray-400">
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                Loading models…
+                            </div>
+                        )}
+                        {orState.status === "error" && (
+                            <div className="px-2 py-1.5 text-xs text-red-500">
+                                {orState.message}
+                            </div>
+                        )}
+                        {orState.status === "loaded" && (
+                            <>
+                                <div className="px-2 pb-1 shrink-0">
+                                    <div className="flex items-center gap-1.5 rounded-md border border-gray-200 bg-gray-50 px-2 py-1">
+                                        <Search className="h-3 w-3 text-gray-400 shrink-0" />
+                                        <input
+                                            ref={searchRef}
+                                            type="text"
+                                            placeholder="Search models…"
+                                            value={orSearch}
+                                            onChange={(e) => setOrSearch(e.target.value)}
+                                            onKeyDown={(e) => e.stopPropagation()}
+                                            className="flex-1 bg-transparent text-xs outline-none placeholder:text-gray-400"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="overflow-y-auto min-h-0 flex-1">
+                                    {filteredOrModels.length === 0 ? (
+                                        <div className="px-2 py-2 text-xs text-gray-400">
+                                            No models match "{orSearch}"
+                                        </div>
+                                    ) : (
+                                        filteredOrModels.map((m) => (
+                                            <DropdownMenuItem
+                                                key={m.id}
+                                                className="cursor-pointer"
+                                                onSelect={() => onChange(m.id)}
+                                            >
+                                                <span className="flex-1 truncate">
+                                                    {m.name ?? m.id}
+                                                </span>
+                                                {isFreeModel(m) && (
+                                                    <span className="ml-1 shrink-0 rounded px-1 py-0.5 text-[10px] font-medium bg-green-50 text-green-700">
+                                                        free
+                                                    </span>
+                                                )}
+                                                {m.id === value && (
+                                                    <Check className="h-3.5 w-3.5 text-gray-600 ml-1 shrink-0" />
+                                                )}
+                                            </DropdownMenuItem>
+                                        ))
+                                    )}
+                                </div>
+                            </>
+                        )}
+                    </>
+                )}
             </DropdownMenuContent>
         </DropdownMenu>
     );

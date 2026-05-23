@@ -124,7 +124,7 @@ export async function updateUserProfile(payload: {
     });
 }
 
-export type ApiKeyProvider = "claude" | "gemini" | "openai";
+export type ApiKeyProvider = "claude" | "gemini" | "openai" | "openrouter";
 export type ApiKeySource = "user" | "env" | null;
 export type ApiKeyState = Record<
     ApiKeyProvider,
@@ -151,6 +151,24 @@ export async function saveApiKey(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ api_key: apiKey }),
     });
+}
+
+export interface OpenRouterModel {
+    id: string;
+    name: string;
+    description?: string;
+    context_length?: number;
+    pricing?: {
+        prompt: string;
+        completion: string;
+    };
+}
+
+export async function listOpenRouterModels(): Promise<OpenRouterModel[]> {
+    const result = await apiRequest<{ data: OpenRouterModel[] }>(
+        "/user/openrouter-models",
+    );
+    return result.data ?? [];
 }
 
 export async function getProject(projectId: string): Promise<MikeProject> {

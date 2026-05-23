@@ -1,6 +1,7 @@
 import type { MikeWorkflow } from "../shared/types";
+import { BUILT_IN_WORKFLOWS_PTBR, BUILT_IN_IDS_PTBR } from "./builtinWorkflowsPtBr";
 
-export const BUILT_IN_WORKFLOWS: MikeWorkflow[] = [
+export const BUILT_IN_WORKFLOWS_EN: MikeWorkflow[] = [
     {
         id: "builtin-cp-checklist",
         user_id: null,
@@ -1243,4 +1244,10 @@ export const BUILT_IN_WORKFLOWS: MikeWorkflow[] = [
     },
 ];
 
+export const BUILT_IN_IDS_EN = new Set(BUILT_IN_WORKFLOWS_EN.map((wf) => wf.id));
+
+export const BUILT_IN_WORKFLOWS: MikeWorkflow[] = [
+    ...BUILT_IN_WORKFLOWS_EN,
+    ...BUILT_IN_WORKFLOWS_PTBR,
+];
 export const BUILT_IN_IDS = new Set(BUILT_IN_WORKFLOWS.map((wf) => wf.id));

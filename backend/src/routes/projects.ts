@@ -12,7 +12,7 @@ import { checkProjectAccess } from "../lib/access";
 import { singleFileUpload } from "../lib/upload";
 
 export const projectsRouter = Router();
-const ALLOWED_TYPES = new Set(["pdf", "docx", "doc"]);
+const ALLOWED_TYPES = new Set(["pdf", "docx", "doc", "txt", "md"]);
 
 function normalizeDocumentFilename(nextName: unknown, currentName: string) {
   if (typeof nextName !== "string") return null;
@@ -705,7 +705,7 @@ export async function handleDocumentUpload(
     return void res
       .status(400)
       .json({
-        detail: `Unsupported file type: ${suffix}. Allowed: pdf, docx, doc`,
+        detail: `Unsupported file type: ${suffix}. Allowed: pdf, docx, doc, txt, md`,
       });
 
   const content = file.buffer;
@@ -730,10 +730,13 @@ export async function handleDocumentUpload(
   try {
     const docId = doc.id as string;
     const key = storageKey(userId, docId, filename);
+    const isPlainText = suffix === "txt" || suffix === "md";
     const contentType =
       suffix === "pdf"
         ? "application/pdf"
-        : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        : isPlainText
+          ? "text/plain; charset=utf-8"
+          : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
     await uploadFile(
       key,
       content.buffer.slice(
@@ -751,6 +754,7 @@ export async function handleDocumentUpload(
     const pageCount = suffix === "pdf" ? await countPdfPages(rawBuf) : null;
 
     // Convert DOCX/DOC → PDF for display. PDFs are their own rendition.
+    // Plain-text formats (txt, md) have no PDF rendition.
     let pdfStoragePath: string | null = null;
     if (suffix === "docx" || suffix === "doc") {
       try {
@@ -882,6 +886,19 @@ async function extractStructureTree(
         page_number: i + 1,
         children: [],
       }));
+    } else if (fileType === "txt" || fileType === "md") {
+      const text = Buffer.from(content).toString("utf-8");
+      const lines = text.split("\n").filter((l) => l.trim());
+      const nodes = lines
+        .slice(0, 30)
+        .map((line, i) => ({
+          id: `h1-${i}`,
+          title: line.slice(0, 100),
+          level: 1,
+          page_number: null,
+          children: [],
+        }));
+      return nodes.length ? nodes : null;
     } else {
       const mammoth = await import("mammoth");
       const result = await mammoth.extractRawText({
