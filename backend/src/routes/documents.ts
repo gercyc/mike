@@ -31,7 +31,7 @@ import { ensureDocAccess } from "../lib/access";
 import { singleFileUpload } from "../lib/upload";
 
 export const documentsRouter = Router();
-const ALLOWED_TYPES = new Set(["pdf", "docx", "doc", "txt", "md"]);
+const ALLOWED_TYPES = new Set(["pdf", "docx", "doc", "txt", "md", "html"]);
 
 type DrizzleDoc = {
   id: string;
@@ -164,6 +164,7 @@ documentsRouter.get("/:documentId/display", requireAuth, async (req, res) => {
   const fileType = doc.fileType ?? "";
   const isDocx = fileType === "docx" || fileType === "doc";
   const isPlainText = fileType === "txt" || fileType === "md";
+  const isHtml = fileType === "html";
 
   const servePath =
     isDocx && active.pdfStoragePath
@@ -177,6 +178,13 @@ documentsRouter.get("/:documentId/display", requireAuth, async (req, res) => {
 
   if (fileType === "pdf" || (isDocx && active.pdfStoragePath)) {
     res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      buildContentDisposition("inline", doc.filename),
+    );
+    res.send(Buffer.from(raw));
+  } else if (isHtml) {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader(
       "Content-Disposition",
       buildContentDisposition("inline", doc.filename),
@@ -913,7 +921,7 @@ async function handleDocumentUpload(
     : "";
   if (!ALLOWED_TYPES.has(suffix))
     return void res.status(400).json({
-      detail: `Unsupported file type: ${suffix}. Allowed: pdf, docx, doc, txt, md`,
+      detail: `Unsupported file type: ${suffix}. Allowed: pdf, docx, doc, txt, md, html`,
     });
 
   const content = file.buffer;
@@ -940,9 +948,11 @@ async function handleDocumentUpload(
     const contentType =
       suffix === "pdf"
         ? "application/pdf"
-        : isPlainText
-          ? "text/plain; charset=utf-8"
-          : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        : suffix === "html"
+          ? "text/html; charset=utf-8"
+          : isPlainText
+            ? "text/plain; charset=utf-8"
+            : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
     await uploadFile(
       key,
       content.buffer.slice(content.byteOffset, content.byteOffset + content.byteLength) as ArrayBuffer,
@@ -1060,8 +1070,11 @@ async function extractStructureTree(
         page_number: i + 1,
         children: [],
       }));
-    } else if (fileType === "txt" || fileType === "md") {
-      const text = Buffer.from(content).toString("utf-8");
+    } else if (fileType === "txt" || fileType === "md" || fileType === "html") {
+      const raw = Buffer.from(content).toString("utf-8");
+      const text = fileType === "html"
+        ? raw.replace(/<[^>]+>/g, " ").replace(/\s{2,}/g, " ").trim()
+        : raw;
       const lines = text.split("\n").filter((l) => l.trim());
       const nodes = lines
         .slice(0, 30)

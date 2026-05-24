@@ -12,10 +12,15 @@ export async function streamChatWithTools(
     params: StreamChatParams,
 ): Promise<StreamChatResult> {
     const provider = providerForModel(params.model);
-    if (provider === "claude") return streamClaude(params);
-    if (provider === "openai") return streamOpenAI(params);
-    if (provider === "openrouter") return streamOpenRouter(params);
-    return streamGemini(params);
+    try {
+        if (provider === "claude") return await streamClaude(params);
+        if (provider === "openai") return await streamOpenAI(params);
+        if (provider === "openrouter") return await streamOpenRouter(params);
+        return await streamGemini(params);
+    } catch (err) {
+        console.error(`[llm/stream] provider=${provider} model=${params.model} error:`, err);
+        throw err;
+    }
 }
 
 export async function completeText(params: {
@@ -26,8 +31,13 @@ export async function completeText(params: {
     apiKeys?: UserApiKeys;
 }): Promise<string> {
     const provider = providerForModel(params.model);
-    if (provider === "claude") return completeClaudeText(params);
-    if (provider === "openai") return completeOpenAIText(params);
-    if (provider === "openrouter") return completeOpenRouterText(params);
-    return completeGeminiText(params);
+    try {
+        if (provider === "claude") return await completeClaudeText(params);
+        if (provider === "openai") return await completeOpenAIText(params);
+        if (provider === "openrouter") return await completeOpenRouterText(params);
+        return await completeGeminiText(params);
+    } catch (err) {
+        console.error(`[llm/complete] provider=${provider} model=${params.model} error:`, err);
+        throw err;
+    }
 }

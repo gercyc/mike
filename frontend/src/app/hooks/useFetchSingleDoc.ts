@@ -13,6 +13,7 @@ export type DocResult =
     | { type: "pdf"; buffer: ArrayBuffer }
     | { type: "docx" }
     | { type: "plaintext"; text: string }
+    | { type: "html"; text: string }
     | null;
 
 export function useFetchSingleDoc(
@@ -63,6 +64,9 @@ export function useFetchSingleDoc(
                 if (contentType.includes("application/pdf")) {
                     const buffer = await response.arrayBuffer();
                     if (!cancelled) setResult({ type: "pdf", buffer });
+                } else if (contentType.includes("text/html")) {
+                    const text = await response.text();
+                    if (!cancelled) setResult({ type: "html", text });
                 } else if (contentType.includes("text/plain")) {
                     const text = await response.text();
                     if (!cancelled) setResult({ type: "plaintext", text });

@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { getDb, userProfiles } from "../db";
-import { resolveModel, DEFAULT_TITLE_MODEL, DEFAULT_TABULAR_MODEL, OPENAI_LOW_MODELS, type UserApiKeys } from "./llm";
+import { resolveModel, DEFAULT_TITLE_MODEL, DEFAULT_TABULAR_MODEL, OPENAI_LOW_MODELS, OPENROUTER_LOW_MODELS, type UserApiKeys } from "./llm";
 import { getUserApiKeys as getStoredUserApiKeys } from "./userApiKeys";
 
 export type UserModelSettings = {
@@ -10,6 +10,7 @@ export type UserModelSettings = {
 };
 
 function resolveTitleModel(apiKeys: UserApiKeys): string {
+  if (apiKeys.openrouter?.trim()) return OPENROUTER_LOW_MODELS[0];
   if (apiKeys.gemini?.trim()) return DEFAULT_TITLE_MODEL;
   if (apiKeys.openai?.trim()) return OPENAI_LOW_MODELS[0];
   if (apiKeys.claude?.trim()) return "claude-haiku-4-5";

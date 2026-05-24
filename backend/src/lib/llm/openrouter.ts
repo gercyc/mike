@@ -8,7 +8,7 @@ import type {
 } from "./types";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const MAX_OUTPUT_TOKENS = 16384;
+const MAX_OUTPUT_TOKENS = 24000;
 
 type ChatMessage =
     | { role: "system" | "user" | "assistant"; content: string }

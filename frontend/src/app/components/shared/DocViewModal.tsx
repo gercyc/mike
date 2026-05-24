@@ -4,8 +4,15 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Download, Trash2, X } from "lucide-react";
 import { DocView } from "./DocView";
+import { DocxView } from "./DocxView";
+import { HtmlView } from "./HtmlView";
+import { MdView } from "./MdView";
 import { getDocumentUrl } from "@/app/lib/mikeApi";
 import type { MikeDocument } from "./types";
+
+function getFileExt(name: string) {
+    return name.split(".").pop()?.toLowerCase() ?? "";
+}
 
 interface Props {
     doc: MikeDocument | null;
@@ -81,18 +88,31 @@ export function DocViewModal({
                     </div>
                 </div>
 
-                {/* DocView serves PDF when available and falls back to
-                    docx-preview internally if the active version has no
-                    PDF rendition. Passing no versionId tells the backend
-                    to resolve the latest tracked-changes version. */}
                 <div className="flex flex-col flex-1 overflow-hidden px-3 pb-3">
-                    <DocView
-                        key={versionId ?? "current"}
-                        doc={{
-                            document_id: doc.id,
-                            version_id: versionId ?? null,
-                        }}
-                    />
+                    {getFileExt(doc.filename) === "md" ? (
+                        <MdView
+                            documentId={doc.id}
+                            versionId={versionId}
+                        />
+                    ) : getFileExt(doc.filename) === "html" ? (
+                        <HtmlView
+                            documentId={doc.id}
+                            versionId={versionId}
+                        />
+                    ) : getFileExt(doc.filename) === "docx" || getFileExt(doc.filename) === "doc" ? (
+                        <DocxView
+                            documentId={doc.id}
+                            versionId={versionId ?? undefined}
+                        />
+                    ) : (
+                        <DocView
+                            key={versionId ?? "current"}
+                            doc={{
+                                document_id: doc.id,
+                                version_id: versionId ?? null,
+                            }}
+                        />
+                    )}
                 </div>
             </div>
         </div>,

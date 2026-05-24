@@ -106,11 +106,12 @@ Rules:
 - For a single-page quote, set "page" to an integer. If a quote is one continuous sentence that spans two pages, set "page" to "N-M" and insert [[PAGE_BREAK]] in the quote at the page break. Otherwise, use separate citations for text on different pages
 - Put the <CITATIONS> block at the very end of the response. Omit it entirely if there are no citations
 
-DOCX GENERATION:
+DOCUMENT GENERATION:
 If asked to draft or generate a document, use the generate_docx tool to produce a downloadable Word document. Always use this tool rather than just displaying the document content inline when the user asks for a document to be created.
+If the user requests an HTML document or webpage, use generate_html instead of generate_docx.
 If the user follows up on a document you just generated and asks for changes (e.g. "make section 3 longer", "add a termination clause", "change the parties"), default to calling edit_document on that newly generated document — do NOT call generate_docx again to regenerate the whole document. Only fall back to generate_docx if the user explicitly asks for a brand-new document or the change is so sweeping that an edit would not be coherent.
-After calling generate_docx, do NOT include any download links, URLs, or markdown links to the document in your prose response — the download card is presented automatically by the UI. Do not describe formatting choices such as orientation or layout.
-After calling generate_docx, you MUST call read_document on the returned doc_id before writing your prose response. Base your description on the generated document's actual text, not on memory of what you intended to generate.
+After calling generate_docx or generate_html, do NOT include any download links, URLs, or markdown links in your prose response — the download card is presented automatically by the UI. Do not describe formatting choices such as orientation or layout.
+After calling generate_docx or generate_html, you MUST call read_document on the returned doc_id before writing your prose response. Base your description on the generated document's actual text, not on memory of what you intended to generate. After reading, write your prose response immediately — do NOT call generate_docx or generate_html again.
 Your prose response MUST include a short description of the generated document: what it is, its structure (key sections/clauses), and — if the draft was informed by any provided source documents — which sources you drew from and how. Keep it concise (typically 3–8 sentences or a short bulleted list). Refer to the document by filename, never by a download link.
 When the description makes factual claims about the contents of the newly generated document, cite the generated document with [N] markers and a <CITATIONS> block exactly as specified in the DOCUMENT CITATION INSTRUCTIONS above. If you also make factual claims about provided source documents, cite those source documents separately. In every citation entry, use the exact chat-local doc_id label for the cited document. Omit the <CITATIONS> block if the description makes no such claims.
 Heading hierarchy: always use Heading 1 before introducing Heading 2, Heading 2 before Heading 3, and so on. Never skip levels (e.g. do not jump from Heading 1 to Heading 3).
@@ -379,6 +380,70 @@ export const TOOLS = [
                                             },
                                             description:
                                                 "Array of rows, each row is an array of cell strings matching the headers order",
+                                        },
+                                    },
+                                    required: ["headers", "rows"],
+                                },
+                            },
+                        },
+                    },
+                },
+                required: ["title", "sections"],
+            },
+        },
+    },
+    {
+        type: "function",
+        function: {
+            name: "generate_html",
+            description:
+                "Generate an HTML document from structured content. Use this when the user explicitly asks for an HTML file or webpage. Returns a download URL for the generated file.",
+            parameters: {
+                type: "object",
+                properties: {
+                    title: {
+                        type: "string",
+                        description:
+                            "Document title (used as filename and <title> / <h1>)",
+                    },
+                    sections: {
+                        type: "array",
+                        description:
+                            "List of document sections. Each section may contain a heading, prose content, or a table.",
+                        items: {
+                            type: "object",
+                            properties: {
+                                heading: {
+                                    type: "string",
+                                    description: "Optional section heading",
+                                },
+                                level: {
+                                    type: "integer",
+                                    description: "Heading level: 1, 2, or 3",
+                                },
+                                content: {
+                                    type: "string",
+                                    description:
+                                        "Prose text or HTML markup for this section (paragraphs separated by double newlines)",
+                                },
+                                table: {
+                                    type: "object",
+                                    description:
+                                        "Optional table to render in this section",
+                                    properties: {
+                                        headers: {
+                                            type: "array",
+                                            items: { type: "string" },
+                                            description: "Column header labels",
+                                        },
+                                        rows: {
+                                            type: "array",
+                                            items: {
+                                                type: "array",
+                                                items: { type: "string" },
+                                            },
+                                            description:
+                                                "Array of rows, each row is an array of cell strings",
                                         },
                                     },
                                     required: ["headers", "rows"],
@@ -1229,6 +1294,149 @@ export async function generateDocx(
             message: `Document '${filename}' has been generated successfully.`,
         };
     } catch (e) {
+        console.error("[generateDocx] error:", e);
+        return { error: String(e) };
+    }
+}
+
+// ---------------------------------------------------------------------------
+// HTML document generation
+// ---------------------------------------------------------------------------
+
+export async function generateHtml(
+    title: string,
+    sections: unknown[],
+    userId: string,
+    options?: { projectId?: string | null },
+) {
+    try {
+        const escapeHtml = (s: string) =>
+            s
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;");
+
+        const renderSection = (sec: unknown): string => {
+            const s = sec as {
+                heading?: string;
+                level?: number;
+                content?: string;
+                table?: { headers: string[]; rows: string[][] };
+            };
+            const parts: string[] = [];
+            if (s.heading) {
+                const lvl = Math.min(Math.max(s.level ?? 2, 1), 6);
+                parts.push(`<h${lvl}>${escapeHtml(s.heading)}</h${lvl}>`);
+            }
+            if (s.content) {
+                const paras = s.content
+                    .split(/\n{2,}/)
+                    .map((p) => p.trim())
+                    .filter(Boolean);
+                for (const para of paras) {
+                    parts.push(`<p>${escapeHtml(para).replace(/\n/g, "<br>")}</p>`);
+                }
+            }
+            if (s.table) {
+                const { headers, rows } = s.table;
+                const headerCells = headers
+                    .map((h) => `<th>${escapeHtml(h)}</th>`)
+                    .join("");
+                const bodyRows = rows
+                    .map(
+                        (row) =>
+                            `<tr>${row.map((c) => `<td>${escapeHtml(c)}</td>`).join("")}</tr>`,
+                    )
+                    .join("\n");
+                parts.push(
+                    `<table><thead><tr>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table>`,
+                );
+            }
+            return parts.join("\n");
+        };
+
+        const body = (sections as unknown[]).map(renderSection).join("\n\n");
+        const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${escapeHtml(title)}</title>
+<style>
+  body { font-family: 'Times New Roman', serif; font-size: 11pt; line-height: 1.6; color: #111; max-width: 860px; margin: 40px auto; padding: 0 32px; }
+  h1 { font-size: 1.4em; text-align: center; text-transform: uppercase; margin-bottom: 1.5em; }
+  h2 { font-size: 1.1em; margin-top: 1.5em; margin-bottom: 0.4em; }
+  h3 { font-size: 1em; margin-top: 1.2em; margin-bottom: 0.3em; }
+  p  { margin: 0.6em 0; }
+  table { width: 100%; border-collapse: collapse; margin: 1em 0; font-size: 0.95em; }
+  th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; vertical-align: top; }
+  thead th { background: #f2f2f2; font-weight: bold; }
+</style>
+</head>
+<body>
+<h1>${escapeHtml(title)}</h1>
+${body}
+</body>
+</html>`;
+
+        const buf = Buffer.from(html, "utf-8");
+        const safeTitle =
+            title
+                .replace(/[^a-zA-Z0-9 -]/g, "")
+                .trim()
+                .slice(0, 64) || "document";
+        const filename = `${safeTitle}.html`;
+        const docId = crypto.randomUUID().replace(/-/g, "");
+        const key = generatedDocKey(userId, docId, filename);
+
+        await uploadFile(key, buf.buffer as ArrayBuffer, "text/html; charset=utf-8");
+        const downloadUrl = buildDownloadUrl(key, filename);
+
+        const db = getDb();
+        const [docRow] = await db
+            .insert(documents)
+            .values({
+                projectId: options?.projectId ?? null,
+                userId,
+                filename,
+                fileType: "html",
+                sizeBytes: buf.byteLength,
+                status: "ready",
+            })
+            .returning({ id: documents.id });
+        if (!docRow) return { error: "Failed to record generated HTML document" };
+        const documentId = docRow.id;
+
+        const [versionRow] = await db
+            .insert(documentVersions)
+            .values({
+                documentId,
+                storagePath: key,
+                source: "generated",
+                versionNumber: 1,
+                displayName: filename,
+            })
+            .returning({ id: documentVersions.id });
+        if (!versionRow) return { error: "Failed to record generated HTML document version" };
+        const versionId = versionRow.id;
+
+        await db
+            .update(documents)
+            .set({ currentVersionId: versionId })
+            .where(eq(documents.id, documentId));
+
+        return {
+            filename,
+            download_url: downloadUrl,
+            document_id: documentId,
+            version_id: versionId,
+            version_number: 1,
+            storage_path: key,
+            message: `HTML document '${filename}' has been generated successfully.`,
+        };
+    } catch (e) {
+        console.error("[generateHtml] error:", e);
         return { error: String(e) };
     }
 }
@@ -1559,6 +1767,19 @@ async function readDocumentContent(
                     `[read_document] docx mammoth fallback length=${text.length} for filename="${docInfo.filename}"`,
                 );
             }
+        } else if (docInfo.file_type === "html") {
+            const rawHtml = Buffer.from(raw).toString("utf-8");
+            text = rawHtml
+                .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+                .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+                .replace(/<[^>]+>/g, " ")
+                .replace(/&amp;/g, "&")
+                .replace(/&lt;/g, "<")
+                .replace(/&gt;/g, ">")
+                .replace(/&quot;/g, '"')
+                .replace(/&#39;/g, "'")
+                .replace(/\s{2,}/g, " ")
+                .trim();
         } else if (docInfo.file_type === "txt" || docInfo.file_type === "md") {
             text = Buffer.from(raw).toString("utf-8");
             console.log(
@@ -2449,14 +2670,15 @@ export async function runToolCalls(
                 }
             }
         } else if (tc.function.name === "generate_docx") {
-            const title = args.title as string;
+            try {
+            const title = (args.title as string | undefined) ?? "document";
             const landscape = !!args.landscape;
             console.log(
                 `[generate_docx] title="${title}" landscape=${landscape} args.landscape=${args.landscape}`,
             );
             const previewFilename = `${
                 title
-                    .replace(/[^a-zA-Z0-9 _-]/g, "")
+                    .replace(/[^a-zA-Z0-9 -]/g, "")
                     .trim()
                     .slice(0, 64) || "document"
             }.docx`;
@@ -2544,6 +2766,102 @@ export async function runToolCalls(
                 tool_call_id: tc.id,
                 content: JSON.stringify(toolResultPayload),
             });
+            } catch (e) {
+                console.error("[generate_docx dispatch] unexpected error:", e);
+                toolResults.push({
+                    role: "tool",
+                    tool_call_id: tc.id,
+                    content: JSON.stringify({ error: `generate_docx failed: ${String(e)}` }),
+                });
+            }
+        } else if (tc.function.name === "generate_html") {
+            try {
+            const title = (args.title as string | undefined) ?? "document";
+            const previewFilename = `${
+                title
+                    .replace(/[^a-zA-Z0-9 -]/g, "")
+                    .trim()
+                    .slice(0, 64) || "document"
+            }.html`;
+            write(
+                `data: ${JSON.stringify({ type: "doc_created_start", filename: previewFilename })}\n\n`,
+            );
+            const result = await generateHtml(
+                title,
+                args.sections as unknown[],
+                userId,
+                { projectId: projectId ?? null },
+            );
+            let newDocLabel: string | null = null;
+            if ("filename" in result && "download_url" in result) {
+                const dlFilename = result.filename as string;
+                const dlUrl = result.download_url as string;
+                const documentId = (result as { document_id?: string }).document_id;
+                const versionId = (result as { version_id?: string }).version_id;
+                const versionNumber =
+                    (result as { version_number?: number }).version_number ?? null;
+                const storagePath = (result as { storage_path?: string }).storage_path;
+
+                if (documentId && storagePath && docIndex) {
+                    const existingLabels = new Set(Object.keys(docIndex));
+                    let i = 0;
+                    while (existingLabels.has(`doc-${i}`)) i++;
+                    newDocLabel = `doc-${i}`;
+                    docIndex[newDocLabel] = {
+                        document_id: documentId,
+                        filename: dlFilename,
+                    };
+                    docStore.set(newDocLabel, {
+                        storage_path: storagePath,
+                        file_type: "html",
+                        filename: dlFilename,
+                    });
+                }
+
+                write(
+                    `data: ${JSON.stringify({
+                        type: "doc_created",
+                        filename: dlFilename,
+                        download_url: dlUrl,
+                        document_id: documentId,
+                        version_id: versionId,
+                        version_number: versionNumber,
+                    })}\n\n`,
+                );
+                docsCreated.push({
+                    filename: dlFilename,
+                    download_url: dlUrl,
+                    document_id: documentId,
+                    version_id: versionId,
+                    version_number: versionNumber,
+                });
+            } else {
+                write(
+                    `data: ${JSON.stringify({ type: "doc_created", filename: previewFilename, download_url: "" })}\n\n`,
+                );
+            }
+            const { download_url: _dlUrl, storage_path: _sp, ...safeHtmlResult } =
+                result as Record<string, unknown>;
+            const htmlToolPayload = newDocLabel
+                ? {
+                      ...safeHtmlResult,
+                      doc_id: newDocLabel,
+                      next_required_action: `Before writing your final response, call read_document with doc_id "${newDocLabel}". Describe and cite the generated document using doc_id "${newDocLabel}", not the source/template document. After reading, write your prose response immediately — do NOT call generate_html or generate_docx again.`,
+                  }
+                : safeHtmlResult;
+            toolResults.push({
+                role: "tool",
+                tool_call_id: tc.id,
+                content: JSON.stringify(htmlToolPayload),
+            });
+            } catch (e) {
+                console.error("[generate_html dispatch] unexpected error:", e);
+                toolResults.push({
+                    role: "tool",
+                    tool_call_id: tc.id,
+                    content: JSON.stringify({ error: `generate_html failed: ${String(e)}` }),
+                });
+            }
         }
     }
 

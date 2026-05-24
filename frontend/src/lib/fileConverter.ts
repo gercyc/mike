@@ -35,6 +35,12 @@ export async function processFiles(
                 file.name.endsWith(".doc")
             ) {
                 processedFile = await convertToTextFile(file);
+            } else if (
+                file.type === "text/html" ||
+                file.name.endsWith(".html") ||
+                file.name.endsWith(".md")
+            ) {
+                processedFile = await convertToTextFile(file);
             }
             // PDFs and others are left as-is
 
