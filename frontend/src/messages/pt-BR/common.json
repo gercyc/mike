@@ -23,7 +23,8 @@
     "download": "Baixar",
     "upload": "Enviar arquivo",
     "search": "Pesquisar",
-    "clear": "Limpar"
+    "clear": "Limpar",
+    "label": "Texto"
   },
   "nav": {
     "projects": "Projetos",

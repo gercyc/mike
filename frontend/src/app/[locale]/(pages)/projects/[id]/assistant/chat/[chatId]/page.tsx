@@ -40,6 +40,7 @@ import { ChatInput } from "@/app/components/assistant/ChatInput";
 import type { ChatInputHandle } from "@/app/components/assistant/ChatInput";
 import { ProjectExplorer } from "@/app/components/projects/ProjectExplorer";
 import { DocView } from "@/app/components/shared/DocView";
+import { MdView } from "@/app/components/shared/MdView";
 import { OwnerOnlyModal } from "@/app/components/shared/OwnerOnlyModal";
 import { DocxView } from "@/app/components/shared/DocxView";
 import { MikeIcon } from "@/components/chat/mike-icon";
@@ -82,6 +83,10 @@ type EditScrollTarget = {
 function isDocxTab(filename: string) {
     const ext = filename.split(".").pop()?.toLowerCase();
     return ext === "docx" || ext === "doc";
+}
+
+function isMdTab(filename: string) {
+    return filename.split(".").pop()?.toLowerCase() === "md";
 }
 
 const ICON_SIZE = 28;
@@ -1088,6 +1093,19 @@ export default function ProjectAssistantChatPage({ params }: Props) {
                                     }
                                     rounded={false}
                                     bordered={false}
+                                />
+                            ) : isMdTab(activeTab.filename) ? (
+                                <MdView
+                                    key={activeTab.documentId}
+                                    documentId={activeTab.documentId}
+                                    versionId={activeTab.versionId}
+                                    initialScrollTop={activeTab.scrollTop ?? null}
+                                    onScrollChange={(top) =>
+                                        handleTabScrollChange(
+                                            activeTab.documentId,
+                                            top,
+                                        )
+                                    }
                                 />
                             ) : (
                                 <DocView

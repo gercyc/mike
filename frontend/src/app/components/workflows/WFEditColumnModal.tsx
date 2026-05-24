@@ -8,7 +8,7 @@ import { generateTabularColumnPrompt } from "@/app/lib/mikeApi";
 import { getFormatOptions, formatLabel, formatIcon } from "../tabular/columnFormat";
 import { TAG_COLORS } from "../tabular/pillUtils";
 import { getPresetConfig, getPromptPresets } from "../tabular/columnPresets";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -34,6 +34,7 @@ interface Props {
 
 export function WFEditColumnModal({ column, onClose, onSave, onDelete }: Props) {
     const t = useTranslations("tabular");
+    const locale = useLocale();
     const [draft, setDraft] = useState<ColumnDraft>({
         name: column.name,
         prompt: column.prompt,
@@ -97,6 +98,7 @@ export function WFEditColumnModal({ column, onClose, onSave, onDelete }: Props) 
             const { prompt } = await generateTabularColumnPrompt(title, {
                 format: draft.format,
                 tags: draft.format === "tag" ? draft.tags : undefined,
+                locale,
             });
             update({ prompt });
         } finally {

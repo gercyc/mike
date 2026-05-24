@@ -293,6 +293,8 @@ tabularRouter.post("/prompt", requireAuth, async (req, res) => {
     const tags: string[] = Array.isArray(req.body.tags)
         ? req.body.tags.filter((t: unknown) => typeof t === "string")
         : [];
+    const locale: string =
+        typeof req.body.locale === "string" ? req.body.locale : "en";
 
     const formatDescriptions: Record<string, string> = {
         text: "free-form text",
@@ -321,12 +323,17 @@ tabularRouter.post("/prompt", requireAuth, async (req, res) => {
         `Do NOT include any instruction about the response format in the prompt — ` +
         `format handling is applied separately and must not be duplicated inside the prompt text.`;
 
+    const languageInstruction =
+        locale === "pt-BR"
+            ? " Write the prompt in Brazilian Portuguese (pt-BR)."
+            : "";
+
     try {
         const { title_model, api_keys } = await getUserModelSettings(userId);
         const raw = await completeText({
             model: title_model,
             systemPrompt:
-                'You write high-quality column prompts for legal tabular review workflows. Return only valid JSON with a single field: {"prompt": string}. The prompt you write must focus solely on what to extract — never on how to format the response.',
+                `You write high-quality column prompts for legal tabular review workflows. Return only valid JSON with a single field: {"prompt": string}. The prompt you write must focus solely on what to extract — never on how to format the response.${languageInstruction}`,
             user: userMessage,
             maxTokens: 512,
             apiKeys: api_keys,
@@ -710,9 +717,12 @@ tabularRouter.post("/:reviewId/regenerate-cell", requireAuth, async (req, res) =
         const buf = await downloadFile(docActive.storagePath);
         if (buf) {
             try {
+                const ft = doc.fileType ?? "";
                 markdown =
-                    doc.fileType === "pdf"
+                    ft === "pdf"
                         ? await extractPdfMarkdown(buf)
+                        : ["md", "txt", "html"].includes(ft)
+                        ? extractPlainTextMarkdown(buf)
                         : await extractDocxMarkdown(buf);
             } catch (err) {
                 console.error(`[regenerate-cell] extraction error doc=${document_id}`, err);
@@ -842,9 +852,12 @@ tabularRouter.post("/:reviewId/generate", requireAuth, async (req, res) => {
                     const buf = await downloadFile(active.storagePath);
                     if (buf) {
                         try {
+                            const ft = doc.fileType ?? "";
                             markdown =
-                                doc.fileType === "pdf"
+                                ft === "pdf"
                                     ? await extractPdfMarkdown(buf)
+                                    : ["md", "txt", "html"].includes(ft)
+                                    ? extractPlainTextMarkdown(buf)
                                     : await extractDocxMarkdown(buf);
                         } catch (err) {
                             console.error(`[tabular/generate] extraction error doc=${docId}`, err);
@@ -1499,6 +1512,14 @@ Rules:
 
     if (contentBuffer.trim()) pending.push(processLine(contentBuffer));
     await Promise.all(pending);
+}
+
+function extractPlainTextMarkdown(buf: ArrayBuffer): string {
+    try {
+        return Buffer.from(buf).toString("utf-8").trim();
+    } catch {
+        return "";
+    }
 }
 
 async function extractPdfMarkdown(buf: ArrayBuffer): Promise<string> {

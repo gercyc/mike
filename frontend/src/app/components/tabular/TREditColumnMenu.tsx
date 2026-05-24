@@ -13,7 +13,7 @@ import {
     DropdownMenuRadioItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 export interface TREditColumnMenuProps {
     column: ColumnConfig;
@@ -30,6 +30,7 @@ export function TREditColumnMenu({
 }: TREditColumnMenuProps) {
     const t = useTranslations("tabular");
     const tc = useTranslations("common");
+    const locale = useLocale();
     const [open, setOpen] = useState(false);
     const [name, setName] = useState(column.name);
     const [prompt, setPrompt] = useState(column.prompt);
@@ -107,6 +108,7 @@ export function TREditColumnMenu({
             const { prompt } = await generateTabularColumnPrompt(name.trim(), {
                 format,
                 tags: format === "tag" ? tags : undefined,
+                locale,
             });
             setPrompt(prompt);
         } finally {

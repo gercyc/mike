@@ -618,7 +618,7 @@ export async function getTabularReviewPeople(
 
 export async function generateTabularColumnPrompt(
     title: string,
-    options?: { format?: string; documentName?: string; tags?: string[] },
+    options?: { format?: string; documentName?: string; tags?: string[]; locale?: string },
 ): Promise<{ prompt: string; source: "preset" | "llm" | "fallback" }> {
     return apiRequest<{
         prompt: string;
@@ -631,6 +631,7 @@ export async function generateTabularColumnPrompt(
             format: options?.format,
             documentName: options?.documentName,
             tags: options?.tags,
+            locale: options?.locale,
         }),
     });
 }

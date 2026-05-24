@@ -17,6 +17,7 @@ import { preprocessCitations, type ParsedCitation } from "./citation-utils";
 import { getPillClass } from "./pillUtils";
 import { DocView } from "../shared/DocView";
 import { DocxView } from "../shared/DocxView";
+import { MdView } from "../shared/MdView";
 
 function isDocxDocument(d: {
     file_type?: string | null;
@@ -26,6 +27,15 @@ function isDocxDocument(d: {
     if (ft === "docx" || ft === "doc") return true;
     const ext = d.filename?.split(".").pop()?.toLowerCase();
     return ext === "docx" || ext === "doc";
+}
+
+function isMdDocument(d: {
+    file_type?: string | null;
+    filename?: string;
+}): boolean {
+    const ft = (d.file_type ?? "").toLowerCase();
+    if (ft === "md") return true;
+    return d.filename?.split(".").pop()?.toLowerCase() === "md";
 }
 
 interface Props {
@@ -177,6 +187,8 @@ export function TRSidePanel({
                                 },
                             ]}
                         />
+                    ) : isMdDocument(doc) ? (
+                        <MdView documentId={doc.id} />
                     ) : (
                         <DocView
                             doc={{ document_id: doc.id }}

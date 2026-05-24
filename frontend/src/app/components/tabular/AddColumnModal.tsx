@@ -8,7 +8,7 @@ import { generateTabularColumnPrompt } from "@/app/lib/mikeApi";
 import { getFormatOptions, formatLabel, formatIcon } from "./columnFormat";
 import { TAG_COLORS } from "./pillUtils";
 import { getPresetConfig, getPromptPresets } from "./columnPresets";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -46,6 +46,7 @@ interface Props {
 export function AddColumnModal({ open, existingCount, onClose, onAdd, editingColumn, onSave, onDelete }: Props) {
     const t = useTranslations("tabular");
     const tc = useTranslations("common");
+    const locale = useLocale();
     const isEditing = !!editingColumn;
     const [columns, setColumns] = useState<ColumnDraft[]>([{ ...EMPTY_DRAFT }]);
     const [generatingIndices, setGeneratingIndices] = useState<number[]>([]);
@@ -158,6 +159,7 @@ export function AddColumnModal({ open, existingCount, onClose, onAdd, editingCol
             const { prompt } = await generateTabularColumnPrompt(title, {
                 format: col.format,
                 tags: col.format === "tag" ? col.tags : undefined,
+                locale,
             });
             updateColumn(index, { prompt });
         } finally {
