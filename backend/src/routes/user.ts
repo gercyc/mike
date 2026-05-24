@@ -1,6 +1,7 @@
 import { Router } from "express";
+import { eq } from "drizzle-orm";
 import { requireAuth } from "../middleware/auth";
-import { createServerSupabase } from "../lib/supabase";
+import { getDb, userProfiles, users } from "../db";
 import { DEFAULT_TABULAR_MODEL, resolveModel } from "../lib/llm";
 import {
   type ApiKeyStatus,
@@ -15,158 +16,82 @@ export const userRouter = Router();
 
 const MONTHLY_CREDIT_LIMIT = 999999;
 
-type UserProfileRow = {
-  display_name: string | null;
-  organisation: string | null;
-  message_credits_used: number;
-  credits_reset_date: string;
-  tier: string;
-  tabular_model: string;
-};
+type ProfileRow = typeof userProfiles.$inferSelect;
 
-function serializeProfile(
-  row: UserProfileRow,
-  apiKeyStatus?: ApiKeyStatus,
-) {
-  const creditsUsed = row.message_credits_used ?? 0;
+function serializeProfile(row: ProfileRow, apiKeyStatus?: ApiKeyStatus) {
+  const creditsUsed = row.messageCreditsUsed ?? 0;
   return {
-    displayName: row.display_name,
+    displayName: row.displayName,
     organisation: row.organisation,
     messageCreditsUsed: creditsUsed,
-    creditsResetDate: row.credits_reset_date,
+    creditsResetDate: row.creditsResetDate,
     creditsRemaining: Math.max(MONTHLY_CREDIT_LIMIT - creditsUsed, 0),
     tier: row.tier || "Free",
-    tabularModel: resolveModel(row.tabular_model, DEFAULT_TABULAR_MODEL),
+    tabularModel: resolveModel(row.tabularModel, DEFAULT_TABULAR_MODEL),
     ...(apiKeyStatus ? { apiKeyStatus } : {}),
   };
 }
 
 function validateProfilePayload(body: unknown):
-  | {
-      ok: true;
-      update: {
-        display_name?: string | null;
-        organisation?: string | null;
-        tabular_model?: string;
-        updated_at: string;
-      };
-    }
+  | { ok: true; update: Partial<Pick<ProfileRow, "displayName" | "organisation" | "tabularModel">> }
   | { ok: false; detail: string } {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return { ok: false, detail: "Expected a JSON object" };
   }
-
   const raw = body as Record<string, unknown>;
-  const allowedFields = new Set([
-    "displayName",
-    "organisation",
-    "tabularModel",
-  ]);
-  const invalidField = Object.keys(raw).find((key) => !allowedFields.has(key));
-  if (invalidField) {
-    return { ok: false, detail: `Unsupported profile field: ${invalidField}` };
-  }
+  const allowedFields = new Set(["displayName", "organisation", "tabularModel"]);
+  const invalidField = Object.keys(raw).find((k) => !allowedFields.has(k));
+  if (invalidField) return { ok: false, detail: `Unsupported profile field: ${invalidField}` };
 
-  const update: {
-    display_name?: string | null;
-    organisation?: string | null;
-    tabular_model?: string;
-    updated_at: string;
-  } = { updated_at: new Date().toISOString() };
+  const update: Partial<Pick<ProfileRow, "displayName" | "organisation" | "tabularModel">> = {};
 
   if ("displayName" in raw) {
     if (raw.displayName !== null && typeof raw.displayName !== "string") {
       return { ok: false, detail: "displayName must be a string or null" };
     }
-    update.display_name = raw.displayName?.trim() || null;
+    update.displayName = (raw.displayName as string | null)?.trim() || null;
   }
-
   if ("organisation" in raw) {
     if (raw.organisation !== null && typeof raw.organisation !== "string") {
       return { ok: false, detail: "organisation must be a string or null" };
     }
-    update.organisation = raw.organisation?.trim() || null;
+    update.organisation = (raw.organisation as string | null)?.trim() || null;
   }
-
   if ("tabularModel" in raw) {
-    if (typeof raw.tabularModel !== "string") {
-      return { ok: false, detail: "tabularModel must be a string" };
-    }
+    if (typeof raw.tabularModel !== "string") return { ok: false, detail: "tabularModel must be a string" };
     const resolved = resolveModel(raw.tabularModel, "");
-    if (!resolved) {
-      return { ok: false, detail: "Unsupported tabularModel" };
-    }
-    update.tabular_model = resolved;
+    if (!resolved) return { ok: false, detail: "Unsupported tabularModel" };
+    update.tabularModel = resolved;
   }
 
   return { ok: true, update };
 }
 
-async function ensureProfileRow(
-  db: ReturnType<typeof createServerSupabase>,
-  userId: string,
-) {
-  const { error } = await db
-    .from("user_profiles")
-    .upsert(
-      { user_id: userId },
-      { onConflict: "user_id", ignoreDuplicates: true },
-    );
-  return error;
+async function ensureProfileRow(userId: string): Promise<void> {
+  await getDb().insert(userProfiles).values({ userId }).onConflictDoNothing();
 }
 
-async function loadProfile(
-  db: ReturnType<typeof createServerSupabase>,
-  userId: string,
-  options: { repairMissing?: boolean } = {},
-) {
-  let { data, error } = await db
-    .from("user_profiles")
-    .select(
-      "display_name, organisation, message_credits_used, credits_reset_date, tier, tabular_model",
-    )
-    .eq("user_id", userId)
-    .maybeSingle();
+async function loadProfile(userId: string, options: { repairMissing?: boolean } = {}) {
+  const db = getDb();
+  let [row] = await db.select().from(userProfiles).where(eq(userProfiles.userId, userId)).limit(1);
 
-  if (error) return { data: null, error };
-  if (!data) {
-    if (!options.repairMissing) {
-      return { data: null, error: new Error("Profile not found") };
-    }
-
-    const ensureError = await ensureProfileRow(db, userId);
-    if (ensureError) return { data: null, error: ensureError };
-
-    const created = await db
-      .from("user_profiles")
-      .select(
-        "display_name, organisation, message_credits_used, credits_reset_date, tier, tabular_model",
-      )
-      .eq("user_id", userId)
-      .single();
-    if (created.error) return { data: null, error: created.error };
-    data = created.data;
+  if (!row) {
+    if (!options.repairMissing) return { data: null, error: new Error("Profile not found") };
+    await ensureProfileRow(userId);
+    [row] = await db.select().from(userProfiles).where(eq(userProfiles.userId, userId)).limit(1);
+    if (!row) return { data: null, error: new Error("Profile not found after insert") };
   }
 
-  let row = data as UserProfileRow;
-  if (row.credits_reset_date && new Date() > new Date(row.credits_reset_date)) {
-    const creditsResetDate = new Date();
-    creditsResetDate.setDate(creditsResetDate.getDate() + 30);
-    const { data: resetData, error: resetError } = await db
-      .from("user_profiles")
-      .update({
-        message_credits_used: 0,
-        credits_reset_date: creditsResetDate.toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("user_id", userId)
-      .select(
-        "display_name, organisation, message_credits_used, credits_reset_date, tier, tabular_model",
-      )
-      .single();
-
-    if (resetError) return { data: null, error: resetError };
-    row = resetData as UserProfileRow;
+  if (row.creditsResetDate && new Date() > new Date(row.creditsResetDate)) {
+    const newResetDate = new Date();
+    newResetDate.setDate(newResetDate.getDate() + 30);
+    const [updated] = await db
+      .update(userProfiles)
+      .set({ messageCreditsUsed: 0, creditsResetDate: newResetDate, updatedAt: new Date() })
+      .where(eq(userProfiles.userId, userId))
+      .returning();
+    if (!updated) return { data: null, error: new Error("Failed to reset credits") };
+    row = updated;
   }
 
   return { data: serializeProfile(row), error: null };
@@ -175,21 +100,20 @@ async function loadProfile(
 // POST /user/profile
 userRouter.post("/profile", requireAuth, async (_req, res) => {
   const userId = res.locals.userId as string;
-  const db = createServerSupabase();
-  const error = await ensureProfileRow(db, userId);
-  if (error) return void res.status(500).json({ detail: error.message });
-  res.json({ ok: true });
+  try {
+    await ensureProfileRow(userId);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ detail: err instanceof Error ? err.message : "Internal error" });
+  }
 });
 
 // GET /user/profile
 userRouter.get("/profile", requireAuth, async (_req, res) => {
   const userId = res.locals.userId as string;
-  const db = createServerSupabase();
-  const { data, error } = await loadProfile(db, userId, {
-    repairMissing: true,
-  });
+  const { data, error } = await loadProfile(userId, { repairMissing: true });
   if (error) return void res.status(500).json({ detail: error.message });
-  const apiKeyStatus = await getUserApiKeyStatus(userId, db);
+  const apiKeyStatus = await getUserApiKeyStatus(userId);
   res.json({ ...data, apiKeyStatus });
 });
 
@@ -199,29 +123,22 @@ userRouter.patch("/profile", requireAuth, async (req, res) => {
   const parsed = validateProfilePayload(req.body);
   if (!parsed.ok) return void res.status(400).json({ detail: parsed.detail });
 
-  const db = createServerSupabase();
-  const ensureError = await ensureProfileRow(db, userId);
-  if (ensureError)
-    return void res.status(500).json({ detail: ensureError.message });
+  await ensureProfileRow(userId);
+  await getDb()
+    .update(userProfiles)
+    .set({ ...parsed.update, updatedAt: new Date() })
+    .where(eq(userProfiles.userId, userId));
 
-  const { error: updateError } = await db
-    .from("user_profiles")
-    .update(parsed.update)
-    .eq("user_id", userId);
-  if (updateError)
-    return void res.status(500).json({ detail: updateError.message });
-
-  const { data, error } = await loadProfile(db, userId);
+  const { data, error } = await loadProfile(userId);
   if (error) return void res.status(500).json({ detail: error.message });
-  const apiKeyStatus = await getUserApiKeyStatus(userId, db);
+  const apiKeyStatus = await getUserApiKeyStatus(userId);
   res.json({ ...data, apiKeyStatus });
 });
 
 // GET /user/api-keys
 userRouter.get("/api-keys", requireAuth, async (_req, res) => {
   const userId = res.locals.userId as string;
-  const db = createServerSupabase();
-  const status = await getUserApiKeyStatus(userId, db);
+  const status = await getUserApiKeyStatus(userId);
   res.json(status);
 });
 
@@ -229,27 +146,20 @@ userRouter.get("/api-keys", requireAuth, async (_req, res) => {
 userRouter.put("/api-keys/:provider", requireAuth, async (req, res) => {
   const userId = res.locals.userId as string;
   const provider = normalizeApiKeyProvider(req.params.provider);
-  if (!provider)
-    return void res.status(400).json({ detail: "Unsupported provider" });
+  if (!provider) return void res.status(400).json({ detail: "Unsupported provider" });
 
-  const apiKey =
-    typeof req.body?.api_key === "string" ? req.body.api_key : null;
-  const db = createServerSupabase();
+  const apiKey = typeof req.body?.api_key === "string" ? req.body.api_key : null;
   try {
     if (hasEnvApiKey(provider)) {
       return void res.status(409).json({
-        detail:
-          "This provider is configured by the server environment and cannot be changed from the browser.",
+        detail: "This provider is configured by the server environment and cannot be changed from the browser.",
       });
     }
-    await saveUserApiKey(userId, provider, apiKey, db);
-    const status = await getUserApiKeyStatus(userId, db);
+    await saveUserApiKey(userId, provider, apiKey);
+    const status = await getUserApiKeyStatus(userId);
     res.json(status);
   } catch (err) {
-    console.error("[user/api-keys] save failed", {
-      provider,
-      error: err instanceof Error ? err.message : String(err),
-    });
+    console.error("[user/api-keys] save failed", { provider, error: err instanceof Error ? err.message : String(err) });
     res.status(500).json({ detail: "Failed to save API key" });
   }
 });
@@ -275,31 +185,24 @@ function isFree(m: OpenRouterModelRaw): boolean {
 // GET /user/openrouter-models
 userRouter.get("/openrouter-models", requireAuth, async (_req, res) => {
   const userId = res.locals.userId as string;
-  const db = createServerSupabase();
   try {
-    const keys = await getUserApiKeys(userId, db);
+    const keys = await getUserApiKeys(userId);
     const apiKey = keys.openrouter?.trim();
-    if (!apiKey) {
-      return void res.json({ data: [] });
-    }
+    if (!apiKey) return void res.json({ data: [] });
 
     const response = await fetch("https://openrouter.ai/api/v1/models", {
       headers: { Authorization: `Bearer ${apiKey}` },
     });
     if (!response.ok) {
       const text = await response.text().catch(() => "");
-      return void res.status(502).json({
-        detail: `OpenRouter returned ${response.status}: ${text || response.statusText}`,
-      });
+      return void res.status(502).json({ detail: `OpenRouter returned ${response.status}: ${text || response.statusText}` });
     }
 
-    const json = await response.json() as { data?: OpenRouterModelRaw[] };
+    const json = (await response.json()) as { data?: OpenRouterModelRaw[] };
     const all = json.data ?? [];
     const extras = extraModelIds();
-
     const filtered = all.filter((m) => isFree(m) || extras.has(m.id));
 
-    // Free models first, then extras alphabetically
     filtered.sort((a, b) => {
       const aFree = isFree(a) ? 0 : 1;
       const bFree = isFree(b) ? 0 : 1;
@@ -317,8 +220,10 @@ userRouter.get("/openrouter-models", requireAuth, async (_req, res) => {
 // DELETE /user/account
 userRouter.delete("/account", requireAuth, async (_req, res) => {
   const userId = res.locals.userId as string;
-  const db = createServerSupabase();
-  const { error } = await db.auth.admin.deleteUser(userId);
-  if (error) return void res.status(500).json({ detail: error.message });
-  res.status(204).send();
+  try {
+    await getDb().delete(users).where(eq(users.id, userId));
+    res.status(204).send();
+  } catch (err) {
+    res.status(500).json({ detail: err instanceof Error ? err.message : "Internal error" });
+  }
 });

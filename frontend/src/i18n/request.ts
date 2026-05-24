@@ -8,7 +8,7 @@ export default getRequestConfig(async ({ requestLocale }) => {
   }
   const namespaces = [
     'common', 'account', 'assistant', 'projects',
-    'workflows', 'workflows-data', 'tabular', 'modals'
+    'workflows', 'workflows-data', 'tabular', 'modals', 'auth'
   ];
   const messages = Object.assign(
     {},

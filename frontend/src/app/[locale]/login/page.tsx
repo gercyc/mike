@@ -2,15 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { SiteLogo } from "@/components/site-logo";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTranslations } from "next-intl";
+
+const API_BASE =
+    process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
+
 export default function LoginPage() {
     const router = useRouter();
-    const { isAuthenticated, authLoading } = useAuth();
+    const { isAuthenticated, authLoading, login } = useAuth();
+    const t = useTranslations("auth");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
@@ -28,16 +33,26 @@ export default function LoginPage() {
         setError(null);
 
         try {
-            const { data, error } = await supabase.auth.signInWithPassword({
-                email,
-                password,
+            const res = await fetch(`${API_BASE}/auth/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, password }),
             });
 
-            if (error) throw error;
+            const data = await res.json();
 
+            if (!res.ok) {
+                throw new Error(data.detail || t("login.errorInvalidCredentials"));
+            }
+
+            login(data.token, data.userId, data.email);
             router.push("/assistant");
-        } catch (error: any) {
-            setError(error.message || "An error occurred during login");
+        } catch (err: unknown) {
+            setError(
+                err instanceof Error
+                    ? err.message
+                    : t("login.errorGeneric"),
+            );
         } finally {
             setLoading(false);
         }
@@ -49,21 +64,20 @@ export default function LoginPage() {
                 <SiteLogo size="md" className="md:text-4xl" asLink />
             </div>
             <div className="w-full max-w-md">
-                {/* Login Form */}
                 <div className="bg-white border border-gray-200 rounded-2xl p-8 mb-4">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-left text-2xl font-serif">
-                            Log In
+                            {t("login.title")}
                         </h2>
                         <div className="bg-gray-100 p-1 rounded-md flex text-xs font-medium">
                             <span className="text-gray-600 px-3 py-1 bg-white rounded-sm shadow-sm">
-                                Log in
+                                {t("login.tab")}
                             </span>
                             <Link
                                 href="/signup"
                                 className="px-3 py-1 text-gray-500 hover:text-gray-900"
                             >
-                                Sign up
+                                {t("signup.tab")}
                             </Link>
                         </div>
                     </div>
@@ -73,14 +87,14 @@ export default function LoginPage() {
                                 htmlFor="email"
                                 className="block text-sm font-medium text-gray-700 mb-2"
                             >
-                                Email
+                                {t("login.emailLabel")}
                             </label>
                             <Input
                                 id="email"
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                placeholder="Enter your email"
+                                placeholder={t("login.emailPlaceholder")}
                                 required
                                 className="w-full"
                             />
@@ -91,17 +105,26 @@ export default function LoginPage() {
                                 htmlFor="password"
                                 className="block text-sm font-medium text-gray-700 mb-2"
                             >
-                                Password
+                                {t("login.passwordLabel")}
                             </label>
                             <Input
                                 id="password"
                                 type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                placeholder="Enter your password"
+                                placeholder={t("login.passwordPlaceholder")}
                                 required
                                 className="w-full"
                             />
+                        </div>
+
+                        <div className="text-right">
+                            <Link
+                                href="/forgot-password"
+                                className="text-sm text-blue-600 hover:underline"
+                            >
+                                {t("login.forgotPassword")}
+                            </Link>
                         </div>
 
                         {error && (
@@ -115,15 +138,12 @@ export default function LoginPage() {
                             disabled={loading}
                             className="w-full mt-5 bg-black hover:bg-gray-900 text-white"
                         >
-                            {loading ? "Logging in..." : "Log in"}
+                            {loading ? t("login.submitting") : t("login.submit")}
                         </Button>
                     </form>
                 </div>
                 <p className="text-center text-xs text-gray-500 leading-relaxed px-2">
-                    Mike hosted on MikeOSS.com is currently a demo service.
-                    Please do not upload, submit, or store sensitive,
-                    confidential, privileged, client, or personally
-                    identifiable documents.
+                    {t("demoDisclaimer")}
                 </p>
             </div>
         </div>

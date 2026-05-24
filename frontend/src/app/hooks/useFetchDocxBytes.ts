@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { getAuthToken } from "@/lib/authToken";
 
 export interface FetchDocxResult {
     bytes: ArrayBuffer | null;
@@ -87,10 +87,7 @@ export function useFetchDocxBytes(
         const pending =
             inFlight.get(key) ??
             (async () => {
-                const {
-                    data: { session },
-                } = await supabase.auth.getSession();
-                const token = session?.access_token;
+                const token = getAuthToken();
                 // Stream bytes through the backend (avoids CORS on R2
                 // signed URLs).
                 const bin = await fetch(url, {

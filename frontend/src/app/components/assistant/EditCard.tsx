@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { supabase } from "@/lib/supabase";
+import { getAuthToken } from "@/lib/authToken";
 import type { MikeEditAnnotation } from "../shared/types";
 
 function normalizeText(s: string) {
@@ -242,10 +242,7 @@ export function EditCard({
             console.error("[EditCard] optimistic update threw", e);
         }
         try {
-            const {
-                data: { session },
-            } = await supabase.auth.getSession();
-            const token = session?.access_token;
+            const token = getAuthToken();
             const apiBase =
                 process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
             const resp = await fetch(

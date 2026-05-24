@@ -2,18 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { SiteLogo } from "@/components/site-logo";
-import { CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { updateUserProfile } from "@/app/lib/mikeApi";
+import { useTranslations } from "next-intl";
+
+const API_BASE =
+    process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
 
 export default function SignupPage() {
     const router = useRouter();
     const { isAuthenticated, authLoading } = useAuth();
+    const t = useTranslations("auth");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
@@ -34,61 +36,48 @@ export default function SignupPage() {
         setLoading(true);
         setError(null);
 
-        // Validate passwords match
         if (password !== confirmPassword) {
-            setError("Passwords do not match");
+            setError(t("signup.errorPasswordMismatch"));
             setLoading(false);
             return;
         }
 
-        // Validate password length
-        if (password.length < 6) {
-            setError("Password must be at least 6 characters");
+        if (password.length < 8) {
+            setError(t("signup.errorPasswordLength"));
             setLoading(false);
             return;
         }
 
         try {
-            const { data, error } = await supabase.auth.signUp({
-                email,
-                password,
+            const res = await fetch(`${API_BASE}/auth/register`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    email,
+                    password,
+                    displayName: name || undefined,
+                    organisation: organisation || undefined,
+                }),
             });
 
-            if (error) throw error;
+            const data = await res.json();
 
-            if (data.session) {
-                const trimmedName = name.trim();
-                const trimmedOrg = organisation.trim();
-                if (trimmedName || trimmedOrg) {
-                    try {
-                        await updateUserProfile({
-                            ...(trimmedName && { displayName: trimmedName }),
-                            ...(trimmedOrg && { organisation: trimmedOrg }),
-                        });
-                    } catch (profileError) {
-                        console.error(
-                            "[signup] failed to persist profile fields",
-                            profileError,
-                        );
-                    }
-                }
+            if (!res.ok) {
+                throw new Error(data.detail || t("signup.errorCreateFailed"));
             }
+
             setSuccess(true);
-            setTimeout(() => {
-                router.push("/assistant");
-            }, 2000);
-        } catch (error: unknown) {
+        } catch (err: unknown) {
             setError(
-                error instanceof Error
-                    ? error.message
-                    : "An error occurred during signup",
+                err instanceof Error
+                    ? err.message
+                    : t("signup.errorGeneric"),
             );
         } finally {
             setLoading(false);
         }
     };
 
-    // Success View
     if (success) {
         return (
             <div className="min-h-dvh bg-white flex items-start justify-center px-6 pt-32 md:pt-40 pb-10 relative">
@@ -98,21 +87,41 @@ export default function SignupPage() {
                 <div className="w-full max-w-md">
                     <div className="bg-white border border-gray-200 rounded-2xl p-10 text-center shadow-sm">
                         <div className="mx-auto w-12 h-12 bg-green-50 rounded-full flex items-center justify-center mb-6">
-                            <CheckCircle2 className="h-6 w-6 text-green-600" />
+                            <svg
+                                className="h-6 w-6 text-green-600"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2}
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M5 13l4 4L19 7"
+                                />
+                            </svg>
                         </div>
                         <h2 className="text-2xl font-semibold text-gray-900 mb-3">
-                            Account created!
+                            {t("signup.successTitle")}
                         </h2>
-                        <p className="text-gray-600 leading-relaxed">
-                            Redirecting you to the home page...
+                        <p className="text-gray-600 leading-relaxed mb-4">
+                            {t.rich("signup.successMessage", {
+                                email,
+                                strong: (chunks) => <strong>{chunks}</strong>,
+                            })}
                         </p>
+                        <Link
+                            href="/login"
+                            className="text-blue-600 hover:underline text-sm"
+                        >
+                            {t("signup.goToLogin")}
+                        </Link>
                     </div>
                 </div>
             </div>
         );
     }
 
-    // Default Signup Form View
     return (
         <div className="min-h-dvh bg-white flex items-start justify-center px-6 pt-32 md:pt-40 pb-10 relative">
             <div className="absolute top-4 md:top-8 left-1/2 -translate-x-1/2">
@@ -122,17 +131,17 @@ export default function SignupPage() {
                 <div className="bg-white border border-gray-200 rounded-2xl p-8 mb-4">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-left text-2xl font-serif">
-                            Create Account
+                            {t("signup.title")}
                         </h2>
                         <div className="bg-gray-100 p-1 rounded-md flex text-xs font-medium">
                             <Link
                                 href="/login"
                                 className="px-3 py-1 text-gray-500 hover:text-gray-900"
                             >
-                                Log in
+                                {t("login.tab")}
                             </Link>
                             <span className="px-3 py-1 bg-white rounded-sm shadow-sm text-gray-900">
-                                Sign up
+                                {t("signup.tab")}
                             </span>
                         </div>
                     </div>
@@ -143,9 +152,9 @@ export default function SignupPage() {
                                 htmlFor="name"
                                 className="block text-sm font-medium text-gray-700 mb-2"
                             >
-                                Name{" "}
+                                {t("signup.nameLabel")}{" "}
                                 <span className="text-gray-400 font-normal">
-                                    (optional)
+                                    {t("signup.optional")}
                                 </span>
                             </label>
                             <Input
@@ -153,7 +162,7 @@ export default function SignupPage() {
                                 type="text"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                placeholder="Your name"
+                                placeholder={t("signup.namePlaceholder")}
                                 className="w-full"
                             />
                         </div>
@@ -163,9 +172,9 @@ export default function SignupPage() {
                                 htmlFor="organisation"
                                 className="block text-sm font-medium text-gray-700 mb-2"
                             >
-                                Organisation{" "}
+                                {t("signup.organisationLabel")}{" "}
                                 <span className="text-gray-400 font-normal">
-                                    (optional)
+                                    {t("signup.optional")}
                                 </span>
                             </label>
                             <Input
@@ -175,7 +184,7 @@ export default function SignupPage() {
                                 onChange={(e) =>
                                     setOrganisation(e.target.value)
                                 }
-                                placeholder="Your organisation"
+                                placeholder={t("signup.organisationPlaceholder")}
                                 className="w-full"
                             />
                         </div>
@@ -185,14 +194,14 @@ export default function SignupPage() {
                                 htmlFor="email"
                                 className="block text-sm font-medium text-gray-700 mb-2"
                             >
-                                Email
+                                {t("signup.emailLabel")}
                             </label>
                             <Input
                                 id="email"
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                placeholder="Enter your email"
+                                placeholder={t("signup.emailPlaceholder")}
                                 required
                                 className="w-full"
                             />
@@ -203,14 +212,14 @@ export default function SignupPage() {
                                 htmlFor="password"
                                 className="block text-sm font-medium text-gray-700 mb-2"
                             >
-                                Password
+                                {t("signup.passwordLabel")}
                             </label>
                             <Input
                                 id="password"
                                 type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                placeholder="Create a password (min. 6 characters)"
+                                placeholder={t("signup.passwordPlaceholder")}
                                 required
                                 className="w-full"
                             />
@@ -221,7 +230,7 @@ export default function SignupPage() {
                                 htmlFor="confirmPassword"
                                 className="block text-sm font-medium text-gray-700 mb-2"
                             >
-                                Confirm Password
+                                {t("signup.confirmPasswordLabel")}
                             </label>
                             <Input
                                 id="confirmPassword"
@@ -230,7 +239,7 @@ export default function SignupPage() {
                                 onChange={(e) =>
                                     setConfirmPassword(e.target.value)
                                 }
-                                placeholder="Confirm your password"
+                                placeholder={t("signup.confirmPasswordPlaceholder")}
                                 required
                                 className="w-full"
                             />
@@ -247,37 +256,33 @@ export default function SignupPage() {
                             disabled={loading}
                             className="w-full bg-black hover:bg-gray-900 text-white"
                         >
-                            {loading ? "Creating account..." : "Sign up"}
+                            {loading ? t("signup.submitting") : t("signup.submit")}
                         </Button>
                     </form>
 
-                    {/* Terms and Privacy */}
                     <div className="mt-4 text-center text-xs text-gray-500">
-                        By signing up, you agree to our{" "}
+                        {t("signup.termsPrefix")}{" "}
                         <Link
                             href="https://mikeoss.com/terms"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-blue-600 hover:underline"
                         >
-                            Terms of Use
+                            {t("signup.termsOfUse")}
                         </Link>{" "}
-                        and{" "}
+                        {t("signup.and")}{" "}
                         <Link
                             href="https://mikeoss.com/privacy"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-blue-600 hover:underline"
                         >
-                            Privacy Policy
+                            {t("signup.privacyPolicy")}
                         </Link>
                     </div>
                 </div>
                 <p className="text-center text-xs text-gray-500 leading-relaxed px-2">
-                    Mike hosted on MikeOSS.com is currently a demo service.
-                    Please do not upload, submit, or store sensitive,
-                    confidential, privileged, client, or personally identifiable
-                    documents.
+                    {t("demoDisclaimer")}
                 </p>
             </div>
         </div>
