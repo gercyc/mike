@@ -3,13 +3,13 @@ import { eq, and } from "drizzle-orm";
 import { getDb, userApiKeys } from "../db";
 import type { UserApiKeys } from "./llm";
 
-export type ApiKeyProvider = "claude" | "gemini" | "openai" | "openrouter";
+export type ApiKeyProvider = "claude" | "gemini" | "openai" | "openrouter" | "deepseek";
 export type ApiKeySource = "user" | "env" | null;
 export type ApiKeyStatus = Record<ApiKeyProvider, boolean> & {
   sources: Record<ApiKeyProvider, ApiKeySource>;
 };
 
-const PROVIDERS: ApiKeyProvider[] = ["claude", "gemini", "openai", "openrouter"];
+const PROVIDERS: ApiKeyProvider[] = ["claude", "gemini", "openai", "openrouter", "deepseek"];
 
 function envApiKey(provider: ApiKeyProvider): string | null {
   if (provider === "claude") {
@@ -17,6 +17,7 @@ function envApiKey(provider: ApiKeyProvider): string | null {
   }
   if (provider === "openai") return process.env.OPENAI_API_KEY?.trim() || null;
   if (provider === "openrouter") return process.env.OPENROUTER_API_KEY?.trim() || null;
+  if (provider === "deepseek") return process.env.DEEPSEEK_API_KEY?.trim() || null;
   return process.env.GEMINI_API_KEY?.trim() || null;
 }
 
@@ -62,8 +63,8 @@ export function normalizeApiKeyProvider(value: string): ApiKeyProvider | null {
 
 export async function getUserApiKeyStatus(userId: string): Promise<ApiKeyStatus> {
   const status: ApiKeyStatus = {
-    claude: false, gemini: false, openai: false, openrouter: false,
-    sources: { claude: null, gemini: null, openai: null, openrouter: null },
+    claude: false, gemini: false, openai: false, openrouter: false, deepseek: false,
+    sources: { claude: null, gemini: null, openai: null, openrouter: null, deepseek: null },
   };
 
   for (const provider of PROVIDERS) {
@@ -92,6 +93,7 @@ export async function getUserApiKeys(userId: string): Promise<UserApiKeys> {
     gemini: envApiKey("gemini"),
     openai: envApiKey("openai"),
     openrouter: envApiKey("openrouter"),
+    deepseek: envApiKey("deepseek"),
   };
 
   const rows = await getDb().select().from(userApiKeys).where(eq(userApiKeys.userId, userId));

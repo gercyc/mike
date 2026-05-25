@@ -122,7 +122,7 @@ export async function updateUserProfile(payload: {
     });
 }
 
-export type ApiKeyProvider = "claude" | "gemini" | "openai" | "openrouter";
+export type ApiKeyProvider = "claude" | "gemini" | "openai" | "openrouter" | "deepseek";
 export type ApiKeySource = "user" | "env" | null;
 export type ApiKeyState = Record<
     ApiKeyProvider,

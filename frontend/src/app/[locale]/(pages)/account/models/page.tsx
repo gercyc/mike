@@ -43,6 +43,11 @@ const API_KEY_FIELDS = [
         label: "OpenRouter API Key",
         placeholder: "sk-or-…",
     },
+    {
+        provider: "deepseek",
+        label: "DeepSeek API Key",
+        placeholder: "sk-…",
+    },
 ] as const;
 
 export default function ModelsAndApiKeysPage() {
@@ -130,10 +135,11 @@ function isFreeModel(m: OpenRouterModel): boolean {
     return m.pricing?.prompt === "0" && m.pricing?.completion === "0";
 }
 
-const STATIC_GROUP_ORDER: ("Anthropic" | "Google" | "OpenAI")[] = [
+const STATIC_GROUP_ORDER: ("Anthropic" | "Google" | "OpenAI" | "DeepSeek")[] = [
     "Anthropic",
     "Google",
     "OpenAI",
+    "DeepSeek",
 ];
 
 function TabularModelDropdown({

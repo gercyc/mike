@@ -1,7 +1,7 @@
 import { STATIC_MODELS, type ModelOption } from "../components/assistant/ModelToggle";
 import type { ApiKeyState } from "@/app/lib/mikeApi";
 
-export type ModelProvider = "claude" | "gemini" | "openai" | "openrouter";
+export type ModelProvider = "claude" | "gemini" | "openai" | "openrouter" | "deepseek";
 
 export function getModelProvider(modelId: string): ModelProvider | null {
     // Known static models
@@ -32,6 +32,7 @@ export function providerLabel(provider: ModelProvider): string {
     if (provider === "claude") return "Anthropic (Claude)";
     if (provider === "openai") return "OpenAI";
     if (provider === "openrouter") return "OpenRouter";
+    if (provider === "deepseek") return "DeepSeek";
     return "Google (Gemini)";
 }
 
@@ -41,5 +42,6 @@ export function modelGroupToProvider(
     if (group === "Anthropic") return "claude";
     if (group === "OpenAI") return "openai";
     if (group === "OpenRouter") return "openrouter";
+    if (group === "DeepSeek") return "deepseek";
     return "gemini";
 }

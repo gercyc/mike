@@ -263,7 +263,7 @@ export default function SignupPage() {
                     <div className="mt-4 text-center text-xs text-gray-500">
                         {t("signup.termsPrefix")}{" "}
                         <Link
-                            href="https://mikeoss.com/terms"
+                            href="https://mike.advokit.com.br/terms"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-blue-600 hover:underline"
@@ -272,7 +272,7 @@ export default function SignupPage() {
                         </Link>{" "}
                         {t("signup.and")}{" "}
                         <Link
-                            href="https://mikeoss.com/privacy"
+                            href="https://mike.advokit.com.br/privacy"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-blue-600 hover:underline"

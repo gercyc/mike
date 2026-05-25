@@ -7,6 +7,7 @@ import {
     FolderOpen,
     Table2,
     Library,
+    Files,
     User,
     ChevronsUpDown,
     ChevronDown,
@@ -60,6 +61,7 @@ export function AppSidebar({ isOpen, onToggle }: AppSidebarProps) {
         { href: "/assistant", label: t("nav.assistant"), icon: MessageSquare },
         { href: "/projects", label: t("nav.projects"), icon: FolderOpen },
         { href: "/tabular-reviews", label: t("nav.tabularReviews"), icon: Table2 },
+        { href: "/documents", label: t("nav.documents"), icon: Files },
         { href: "/workflows", label: t("nav.workflows"), icon: Library },
     ];
 
