@@ -8,97 +8,101 @@ export interface ColumnPreset {
     tags?: string[];
 }
 
-export const PROMPT_PRESETS: ColumnPreset[] = [
-    {
-        name: "Parties",
-        matches: /\bpart(y|ies)\b/i,
-        format: "bulleted_list",
-        prompt: 'List all parties to this agreement. For each party, state their full legal name, entity type, and defined role, e.g.:\n• ABC Corp, a Delaware corporation ("Company")\n• John Smith ("Shareholder")\nOne party per bullet. No additional commentary.',
-    },
-    {
-        name: "Governing Law",
-        matches: /\bgoverning law\b|\bjurisdiction\b/i,
-        format: "text",
-        prompt: 'State only the governing law of this agreement using the short-form jurisdiction name, e.g. "New York Law", "English Law", "Indian Law", "PRC Law". No other text.',
-    },
-    {
-        name: "Effective Date",
-        matches: /\beffective date\b/i,
-        format: "date",
-        prompt: 'State only the effective date of this agreement in DD Mon YYYY format, e.g. "2 Jan 2026". If not explicitly stated, write "Not specified".',
-    },
-    {
-        name: "Term",
-        matches: /\bterm\b|\bduration\b/i,
-        format: "text",
-        prompt: 'State only the duration or term of this agreement in a concise form, e.g. "3 years", "24 months", "perpetual". No other text.',
-    },
-    {
-        name: "Termination",
-        matches: /\bterminat(e|ion|ing)\b/i,
-        format: "text",
-        prompt: "Extract the termination provisions. State who may terminate, the trigger events, required notice period, any cure period, and the key consequences of termination. Be concise.",
-    },
-    {
-        name: "Change of Control",
-        matches: /\bchange of control\b/i,
-        format: "text",
-        prompt: "Identify any change of control provisions. Summarize the trigger events, consequences, consent requirements, and any related termination or acceleration rights. Be concise.",
-    },
-    {
-        name: "Confidentiality",
-        matches: /\bconfidential(ity)?\b|\bnon-?disclosure\b/i,
-        format: "text",
-        prompt: "Summarize the confidentiality obligations: scope of confidential information, permitted disclosures, use restrictions, duration, and key carve-outs or exceptions.",
-    },
-    {
-        name: "Assignment",
-        matches: /\bassign(ment|ability)?\b/i,
-        format: "yes_no",
-        prompt: "Is assignment of this agreement permitted without the other party's consent?",
-    },
-    {
-        name: "Payment & Fees",
-        matches: /\bpayment\b|\bfees?\b/i,
-        format: "text",
-        prompt: 'State the key payment obligations concisely: amount, timing, and currency, e.g. "USD 10,000 payable within 30 days of invoice". Note any late payment consequences.',
-    },
-    {
-        name: "Amendment",
-        matches: /\bamendment\b|\bvariation\b/i,
-        format: "text",
-        prompt: "Summarize the amendment provisions: how amendments may be made, who must consent, and any formality requirements such as writing or signature.",
-    },
-    {
-        name: "Indemnity",
-        matches: /\bindemni(ty|ties|fication)\b/i,
-        format: "text",
-        prompt: "Summarize the indemnity provisions: who indemnifies whom, the scope of indemnified losses, any liability caps or exclusions, and key claims procedures.",
-    },
-    {
-        name: "Warranties",
-        matches: /\bwarrant(y|ies|ing)\b|\brepresentations?\b/i,
-        format: "text",
-        prompt: "Identify and describe key representations and warranties provided by any party, including the scope of such assurances and any specific time periods or conditions applicable to them. In particular highlight any non-standard warranties.",
-    },
-    {
-        name: "Force Majeure",
-        matches: /\bforce majeure\b/i,
-        format: "yes_no",
-        prompt: "Does this agreement contain a force majeure clause?",
-    },
-];
+export function getPromptPresets(t: (key: string) => string): ColumnPreset[] {
+    return [
+        {
+            name: t("presets.parties.name"),
+            matches: /\bpart(y|ies)\b/i,
+            format: "bulleted_list",
+            prompt: t("presets.parties.prompt"),
+        },
+        {
+            name: t("presets.governingLaw.name"),
+            matches: /\bgoverning law\b|\bjurisdiction\b/i,
+            format: "text",
+            prompt: t("presets.governingLaw.prompt"),
+        },
+        {
+            name: t("presets.effectiveDate.name"),
+            matches: /\beffective date\b/i,
+            format: "date",
+            prompt: t("presets.effectiveDate.prompt"),
+        },
+        {
+            name: t("presets.term.name"),
+            matches: /\bterm\b|\bduration\b/i,
+            format: "text",
+            prompt: t("presets.term.prompt"),
+        },
+        {
+            name: t("presets.termination.name"),
+            matches: /\bterminat(e|ion|ing)\b/i,
+            format: "text",
+            prompt: t("presets.termination.prompt"),
+        },
+        {
+            name: t("presets.changeOfControl.name"),
+            matches: /\bchange of control\b/i,
+            format: "text",
+            prompt: t("presets.changeOfControl.prompt"),
+        },
+        {
+            name: t("presets.confidentiality.name"),
+            matches: /\bconfidential(ity)?\b|\bnon-?disclosure\b/i,
+            format: "text",
+            prompt: t("presets.confidentiality.prompt"),
+        },
+        {
+            name: t("presets.assignment.name"),
+            matches: /\bassign(ment|ability)?\b/i,
+            format: "yes_no",
+            prompt: t("presets.assignment.prompt"),
+        },
+        {
+            name: t("presets.paymentAndFees.name"),
+            matches: /\bpayment\b|\bfees?\b/i,
+            format: "text",
+            prompt: t("presets.paymentAndFees.prompt"),
+        },
+        {
+            name: t("presets.amendment.name"),
+            matches: /\bamendment\b|\bvariation\b/i,
+            format: "text",
+            prompt: t("presets.amendment.prompt"),
+        },
+        {
+            name: t("presets.indemnity.name"),
+            matches: /\bindemni(ty|ties|fication)\b/i,
+            format: "text",
+            prompt: t("presets.indemnity.prompt"),
+        },
+        {
+            name: t("presets.warranties.name"),
+            matches: /\bwarrant(y|ies|ing)\b|\brepresentations?\b/i,
+            format: "text",
+            prompt: t("presets.warranties.prompt"),
+        },
+        {
+            name: t("presets.forceMajeure.name"),
+            matches: /\bforce majeure\b/i,
+            format: "yes_no",
+            prompt: t("presets.forceMajeure.prompt"),
+        },
+    ];
+}
 
 export function getPresetConfig(
+    t: (key: string) => string,
     title: string,
 ): Pick<ColumnPreset, "prompt" | "format" | "tags"> | null {
     const trimmed = title.trim();
     if (!trimmed) return null;
-    const preset = PROMPT_PRESETS.find(({ matches }) => matches.test(trimmed));
+    const presets = getPromptPresets(t);
+    const preset = presets.find(({ matches }) => matches.test(trimmed));
     if (!preset) return null;
     return { prompt: preset.prompt, format: preset.format, tags: preset.tags };
 }
 
-export function getPresetPrompt(title: string): string | null {
-    return getPresetConfig(title)?.prompt ?? null;
+export function getPresetPrompt(t: (key: string) => string, title: string): string | null {
+    return getPresetConfig(t, title)?.prompt ?? null;
 }

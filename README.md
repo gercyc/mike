@@ -4,6 +4,8 @@ Mike is a legal document assistant with a Next.js frontend, an Express backend, 
 
 Website: [mikeoss.com](https://mikeoss.com)
 
+[Leia em Português (Brasil)](README.pt-BR.md)
+
 ## Contents
 
 - `frontend/` - Next.js application
@@ -114,6 +116,43 @@ Open `http://localhost:3000`.
 **The model picker shows a missing-key warning.** Add a key for that provider in **Account > Models & API Keys**, or configure the provider key in `backend/.env` and restart the backend.
 
 **DOC or DOCX conversion fails.** Install LibreOffice locally and restart the backend so document conversion commands are available on the process path.
+
+## Docker
+
+Docker images are available for both the frontend and backend. The backend image includes LibreOffice for DOC/DOCX to PDF conversion.
+
+### Building the images
+
+Run the commands below from the project root. The frontend requires the `NEXT_PUBLIC_*` variables at build time because Next.js embeds them in the client bundle.
+
+```bash
+# Backend
+docker build -t homeserver:32081/mike-backend:latest ./backend
+
+# Frontend
+docker build \
+  --build-arg NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co \
+  --build-arg NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=your-supabase-anon-key \
+  --build-arg NEXT_PUBLIC_API_BASE_URL=http://your-server:32083 \
+  -t homeserver:32081/mike-frontend:latest \
+  ./frontend
+```
+
+### Running locally with Docker Compose
+
+Create a `.env` file in the project root with all variables from `backend/.env.example` and `frontend/.env.local.example`, then run:
+
+```bash
+docker compose up
+```
+
+Frontend will be available at `http://localhost:3000` and the backend at `http://localhost:3001`.
+
+### Homelab / Portainer deployment
+
+Use `docker-compose-homelab.yml` to deploy as a Portainer stack. The file has all environment variables inlined and exposes the backend on port `32083` and the frontend on port `32084`.
+
+If you change the backend URL after the frontend image was built, rebuild the frontend image with the correct `NEXT_PUBLIC_API_BASE_URL` build argument and push a new image to the registry before redeploying the stack.
 
 ## Useful Checks
 

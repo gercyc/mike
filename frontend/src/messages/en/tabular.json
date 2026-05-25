@@ -1,0 +1,208 @@
+{
+  "title": "Tabular Reviews",
+  "newReview": "New Tabular Review",
+  "noReviews": "No tabular reviews yet",
+  "tabs": {
+    "all": "All",
+    "inProject": "In Project",
+    "standalone": "Standalone"
+  },
+  "filterByProject": "Filter by project",
+  "allProjects": "All Projects",
+  "searchPlaceholder": "Search reviews…",
+  "tableHeaders": {
+    "name": "Name",
+    "columns": "Columns",
+    "documents": "Documents",
+    "project": "Project",
+    "created": "Created"
+  },
+  "empty": {
+    "title": "Tabular Reviews",
+    "description": "Extract data from documents into tables using AI.",
+    "createNew": "Create New"
+  },
+  "noReviewsFound": "No reviews found",
+  "ownerOnly": {
+    "renameReview": "rename this tabular review",
+    "deleteReview": "delete this tabular review",
+    "deleteSelectedReviews": "delete {blocked} of the selected reviews — only the review creator can delete a review"
+  },
+  "table": {
+    "document": "Document",
+    "status": "Status",
+    "actions": "Actions",
+    "generating": "Generating...",
+    "pending": "Pending",
+    "done": "Done",
+    "error": "Error"
+  },
+  "column": {
+    "add": "Add Column",
+    "edit": "Edit Column",
+    "delete": "Delete Column",
+    "name": "Column name",
+    "prompt": "Prompt",
+    "format": "Format",
+    "regenerate": "Regenerate",
+    "presets": "Column presets",
+    "tags": "Tags",
+    "addTagPlaceholder": "Add tag…",
+    "tagHint": "Press Enter or comma to add a tag.",
+    "autoGenerate": "Auto-Generate Prompt",
+    "promptPlaceholder": "Write the analysis prompt — describe what Mike should extract from each document for this column…",
+    "addAnother": "Add another column"
+  },
+  "sidePanel": {
+    "title": "Details",
+    "noSelection": "Select a cell to view details"
+  },
+  "chat": {
+    "placeholder": "Ask about this document...",
+    "send": "Send",
+    "searchPlaceholder": "Search chats…",
+    "noPreviousChats": "No previous chats.",
+    "noMatches": "No matches.",
+    "chatLabel": "Chat",
+    "chatHistory": "Chat history",
+    "newChat": "New chat",
+    "deleteChat": "Delete chat",
+    "close": "Close",
+    "errorOccurred": "An error occurred. Please try again.",
+    "assistant": "Assistant"
+  },
+  "review": {
+    "untitled": "Untitled Review",
+    "searchDocuments": "Search documents…",
+    "peopleWithAccess": "People with access",
+    "exportToExcel": "Export to Excel",
+    "export": "Export",
+    "running": "Running…",
+    "run": "Run",
+    "assistantInReview": "Assistant in Tabular Review",
+    "actions": "Actions",
+    "clearResults": "Clear results",
+    "addDocuments": "Add Documents",
+    "addColumns": "Add Columns"
+  },
+  "breadcrumb": {
+    "projects": "Projects",
+    "tabularReviews": "Tabular Reviews",
+    "addDocuments": "Add Documents",
+    "people": "People",
+    "newReview": "New review"
+  },
+  "formats": {
+    "text": "Free Text",
+    "bulleted_list": "Bulleted list",
+    "number": "Number",
+    "percentage": "Percentage",
+    "monetary_amount": "Monetary Amount",
+    "currency": "Currency",
+    "yes_no": "Yes / No",
+    "date": "Date",
+    "tag": "Tags",
+    "fallback": "Text"
+  },
+  "newReview": {
+    "workflowTemplate": "Workflow Template",
+    "loadingTemplates": "Loading templates…",
+    "noTemplate": "No template — start from scratch",
+    "createUnderProject": "Create under a project",
+    "selectProject": "Select project…",
+    "noProjectsFound": "No projects found",
+    "selectDocuments": "Select Documents",
+    "projectDocuments": "Project Documents",
+    "noReadyDocuments": "No ready documents in this project",
+    "noDocumentsYet": "No documents yet"
+  },
+  "modal": {
+    "create": "Create Tabular Review",
+    "name": "Review name",
+    "selectWorkflow": "Select workflow",
+    "selectDocuments": "Select documents",
+    "editColumn": "Edit column",
+    "newColumn": "New column",
+    "saveChanges": "Save changes",
+    "addColumns": "Add columns"
+  },
+  "presets": {
+    "noPreset": "No Preset",
+    "parties": {
+      "name": "Parties",
+      "prompt": "List all parties to this agreement. For each party, state their full legal name, entity type, and defined role, e.g.:\n• ABC Corp, a Delaware corporation (\"Company\")\n• John Smith (\"Shareholder\")\nOne party per bullet. No additional commentary."
+    },
+    "governingLaw": {
+      "name": "Governing Law",
+      "prompt": "State only the governing law of this agreement using the short-form jurisdiction name, e.g. \"New York Law\", \"English Law\", \"Indian Law\", \"PRC Law\". No other text."
+    },
+    "effectiveDate": {
+      "name": "Effective Date",
+      "prompt": "State only the effective date of this agreement in DD Mon YYYY format, e.g. \"2 Jan 2026\". If not explicitly stated, write \"Not specified\"."
+    },
+    "term": {
+      "name": "Term",
+      "prompt": "State only the duration or term of this agreement in a concise form, e.g. \"3 years\", \"24 months\", \"perpetual\". No other text."
+    },
+    "termination": {
+      "name": "Termination",
+      "prompt": "Extract the termination provisions. State who may terminate, the trigger events, required notice period, any cure period, and the key consequences of termination. Be concise."
+    },
+    "changeOfControl": {
+      "name": "Change of Control",
+      "prompt": "Identify any change of control provisions. Summarize the trigger events, consequences, consent requirements, and any related termination or acceleration rights. Be concise."
+    },
+    "confidentiality": {
+      "name": "Confidentiality",
+      "prompt": "Summarize the confidentiality obligations: scope of confidential information, permitted disclosures, use restrictions, duration, and key carve-outs or exceptions."
+    },
+    "assignment": {
+      "name": "Assignment",
+      "prompt": "Is assignment of this agreement permitted without the other party's consent?"
+    },
+    "paymentAndFees": {
+      "name": "Payment & Fees",
+      "prompt": "State the key payment obligations concisely: amount, timing, and currency, e.g. \"USD 10,000 payable within 30 days of invoice\". Note any late payment consequences."
+    },
+    "amendment": {
+      "name": "Amendment",
+      "prompt": "Summarize the amendment provisions: how amendments may be made, who must consent, and any formality requirements such as writing or signature."
+    },
+    "indemnity": {
+      "name": "Indemnity",
+      "prompt": "Summarize the indemnity provisions: who indemnifies whom, the scope of indemnified losses, any liability caps or exclusions, and key claims procedures."
+    },
+    "warranties": {
+      "name": "Warranties",
+      "prompt": "Identify and describe key representations and warranties provided by any party, including the scope of such assurances and any specific time periods or conditions applicable to them. In particular highlight any non-standard warranties."
+    },
+    "forceMajeure": {
+      "name": "Force Majeure",
+      "prompt": "Does this agreement contain a force majeure clause?"
+    }
+  },
+  "promptGenerator": {
+    "parties": {
+      "prompt": "Identify all parties referenced in the document. List their full names and describe each party's role or capacity in the agreement. If a party is not clearly identified, state \"Not addressed\"."
+    },
+    "changeOfControl": {
+      "prompt": "Identify any change of control provisions in the document. Summarize the trigger, the consequences, any consent requirements, and any related termination, acceleration, or notice obligations. If not addressed, state \"Not addressed\"."
+    },
+    "termination": {
+      "prompt": "Extract the termination provisions in the document. Summarize who may terminate, the termination triggers, any notice requirements, cure periods, and the consequences of termination. If not addressed, state \"Not addressed\"."
+    },
+    "governingLaw": {
+      "prompt": "Identify the governing law and jurisdiction provisions in the document. State the governing law, the forum for disputes, and any submission to jurisdiction or venue requirements. If not addressed, state \"Not addressed\"."
+    },
+    "confidentiality": {
+      "prompt": "Extract the confidentiality provisions in the document. Summarize the scope of confidential information, permitted disclosures, use restrictions, duration, and any carve-outs or exceptions. If not addressed, state \"Not addressed\"."
+    },
+    "assignment": {
+      "prompt": "Identify any assignment provisions in the document. Summarize whether assignment is permitted, restricted, or requires consent, and note any exceptions or deemed assignments. If not addressed, state \"Not addressed\"."
+    },
+    "paymentAndFees": {
+      "prompt": "Extract the payment and fee terms in the document. Summarize payment obligations, amounts, timing, currencies, fee types, and any consequences for late or missed payment. If not addressed, state \"Not addressed\"."
+    },
+    "fallbackPrompt": "Review each document and extract the information relevant to \"{title}\". Provide a concise, document-specific summary for this column. Include the key facts, dates, thresholds, parties, and conditions where applicable. If the document does not contain relevant information, return \"Not addressed\"."
+  }
+}

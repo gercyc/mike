@@ -1,0 +1,43 @@
+{
+  "title": "Configurações da Conta",
+  "models": {
+    "title": "Preferências de Modelos",
+    "tabularReviewModel": "Modelo de revisão tabular",
+    "description": "Escolha o modelo de IA usado para revisões tabulares"
+  },
+  "apiKeys": {
+    "title": "Chaves de API",
+    "addKey": "Adicionar Chave de API",
+    "provider": "Provedor",
+    "key": "Chave",
+    "noKeys": "Nenhuma chave de API configurada"
+  },
+  "language": {
+    "title": "Idioma",
+    "label": "Idioma da interface",
+    "en": "English",
+    "ptBR": "Português (Brasil)"
+  },
+  "profile": {
+    "title": "Perfil",
+    "email": "E-mail",
+    "name": "Nome",
+    "organisation": "Organização"
+  },
+  "subscription": {
+    "title": "Plano de Uso",
+    "credits": "Créditos restantes"
+  },
+  "actions": {
+    "title": "Ações",
+    "signOut": "Sair",
+    "cancel": "Cancelar"
+  },
+  "dangerZone": {
+    "title": "Zona de Perigo",
+    "description": "Exclua permanentemente sua conta e todos os dados associados. Esta ação não pode ser desfeita.",
+    "confirm": "Tem certeza? Isso excluirá permanentemente sua conta.",
+    "deleting": "Excluindo…",
+    "deleteAccount": "Excluir Conta"
+  }
+}

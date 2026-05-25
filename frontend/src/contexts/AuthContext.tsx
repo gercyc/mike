@@ -7,7 +7,10 @@ import React, {
     useState,
     ReactNode,
 } from "react";
-import { supabase } from "@/lib/supabase";
+import { getAuthToken, removeAuthToken } from "@/lib/authToken";
+
+const API_BASE =
+    process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
 
 interface User {
     id: string;
@@ -19,6 +22,7 @@ interface AuthContextType {
     isAuthenticated: boolean;
     authLoading: boolean;
     signOut: () => Promise<void>;
+    login: (token: string, userId: string, email: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,42 +33,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         const checkUser = async () => {
-            const {
-                data: { session },
-            } = await supabase.auth.getSession();
-
-            if (session?.user) {
-                setUser({
-                    id: session.user.id,
-                    email: session.user.email || "",
-                });
+            const token = getAuthToken();
+            if (!token) {
+                setAuthLoading(false);
+                return;
             }
-            setAuthLoading(false);
+
+            try {
+                const res = await fetch(`${API_BASE}/auth/me`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setUser({ id: data.userId, email: data.email });
+                } else {
+                    removeAuthToken();
+                }
+            } catch {
+                removeAuthToken();
+            } finally {
+                setAuthLoading(false);
+            }
         };
 
         checkUser();
-
-        const {
-            data: { subscription },
-        } = supabase.auth.onAuthStateChange(async (_event, session) => {
-            if (session?.user) {
-                setUser({
-                    id: session.user.id,
-                    email: session.user.email || "",
-                });
-            } else {
-                setUser(null);
-            }
-            setAuthLoading(false);
-        });
-
-        return () => {
-            subscription.unsubscribe();
-        };
     }, []);
 
+    const login = (token: string, userId: string, email: string) => {
+        localStorage.setItem("mike_auth_token", token);
+        setUser({ id: userId, email });
+    };
+
     const signOut = async () => {
-        await supabase.auth.signOut();
+        removeAuthToken();
         setUser(null);
     };
 
@@ -75,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 isAuthenticated: !!user,
                 authLoading,
                 signOut,
+                login,
             }}
         >
             {children}

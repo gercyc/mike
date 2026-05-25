@@ -1,0 +1,30 @@
+{
+  "title": "Documentos",
+  "searchPlaceholder": "Buscar documentos…",
+  "uploadDocument": "Enviar documento",
+  "tableHeaders": {
+    "name": "Nome",
+    "type": "Tipo",
+    "size": "Tamanho",
+    "pages": "Páginas",
+    "status": "Status",
+    "created": "Criado em"
+  },
+  "status": {
+    "ready": "Pronto",
+    "pending": "Pendente",
+    "processing": "Processando",
+    "error": "Erro"
+  },
+  "empty": {
+    "title": "Nenhum documento ainda",
+    "description": "Envie documentos para analisá-los com o assistente ou usá-los em revisões tabulares.",
+    "upload": "Enviar documento"
+  },
+  "noDocumentsFound": "Nenhum documento encontrado.",
+  "actions": "Ações",
+  "deleteSelected": "Excluir selecionados",
+  "confirmDelete": "Excluir {count, plural, one {# documento} other {# documentos}}?",
+  "downloadZip": "Baixar como ZIP",
+  "viewDocument": "Visualizar documento"
+}

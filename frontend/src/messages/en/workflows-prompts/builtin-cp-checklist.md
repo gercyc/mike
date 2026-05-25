@@ -1,0 +1,15 @@
+## Generate Conditions Precedent Checklist
+
+Review the uploaded credit agreement or financing document and generate a comprehensive Conditions Precedent (CP) checklist.
+
+You MUST use the generate_docx tool to produce the checklist as a downloadable Word document. You MUST pass landscape: true to the generate_docx tool — the document must be in landscape orientation. Do not display the checklist inline — generate the .docx file and provide the download link.
+
+Structure the document as follows:
+- For each category of conditions (e.g. Corporate, Financial, Legal, Security), add a section with a heading
+- Under each category heading, include a table with exactly these four columns in this order:
+  1. Index — sequential number within the category (1, 2, 3…)
+  2. Clause Number — the clause or schedule reference from the agreement
+  3. Clause — a concise description of the condition precedent
+  4. Status — leave blank (empty string) for the user to fill in
+
+Use the table field in the section object (not content) for each category's rows.

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { useTranslations } from "next-intl";
+import { getAuthToken } from "@/lib/authToken";
 import type { MikeEditAnnotation } from "../shared/types";
 
 function normalizeText(s: string) {
@@ -210,6 +211,7 @@ export function EditCard({
     onResolved,
     onError,
 }: Props) {
+    const t = useTranslations("assistant");
     const [busy, setBusy] = useState(false);
     const [localStatus, setLocalStatus] = useState<
         "pending" | "accepted" | "rejected"
@@ -240,10 +242,7 @@ export function EditCard({
             console.error("[EditCard] optimistic update threw", e);
         }
         try {
-            const {
-                data: { session },
-            } = await supabase.auth.getSession();
-            const token = session?.access_token;
+            const token = getAuthToken();
             const apiBase =
                 process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
             const resp = await fetch(
@@ -286,8 +285,8 @@ export function EditCard({
                 versionId: annotation.version_id ?? null,
                 message:
                     verb === "accept"
-                        ? "Couldn't save accept — reverted."
-                        : "Couldn't save reject — reverted.",
+                        ? t("editCard.saveAcceptError")
+                        : t("editCard.saveRejectError"),
             });
         } finally {
             setBusy(false);
@@ -319,14 +318,14 @@ export function EditCard({
                     disabled={inFlight || resolved}
                     className="px-2 py-1 text-xs rounded border border-gray-900 bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50"
                 >
-                    {status === "accepted" ? "Accepted" : "Accept"}
+                    {status === "accepted" ? t("editCard.accepted") : t("editCard.accept")}
                 </button>
                 <button
                     onClick={() => handle("reject")}
                     disabled={inFlight || resolved}
                     className="px-2 py-1 text-xs rounded border border-gray-200 bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-50"
                 >
-                    {status === "rejected" ? "Rejected" : "Reject"}
+                    {status === "rejected" ? t("editCard.rejected") : t("editCard.reject")}
                 </button>
                 {onViewClick && (
                     <button
@@ -334,12 +333,12 @@ export function EditCard({
                         disabled={resolved}
                         title={
                             resolved
-                                ? "This change has been resolved and is no longer in the document."
+                                ? t("editCard.resolvedTooltip")
                                 : undefined
                         }
                         className="ml-auto px-2 py-1 text-xs rounded border border-gray-200 bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
                     >
-                        View
+                        {t("editCard.view")}
                     </button>
                 )}
             </div>

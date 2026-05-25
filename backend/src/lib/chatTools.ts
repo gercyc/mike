@@ -6,7 +6,8 @@ import {
     uploadFile,
 } from "./storage";
 import { convertedPdfKey } from "./convert";
-import { createServerSupabase } from "./supabase";
+import { eq, inArray, desc, and } from "drizzle-orm";
+import { getDb, documents, documentVersions, documentEdits, chats, chatMessages, workflows, workflowShares, hiddenWorkflows, workflowAssets } from "../db";
 import {
     applyTrackedEdits,
     extractDocxBodyText,
@@ -24,6 +25,12 @@ import {
     type LlmMessage,
     type OpenAIToolSchema,
 } from "./llm";
+
+function stripBase64FromHtml(html: string): string {
+    // Remove inline base64 data URIs (images, fonts, etc.) — they are binary
+    // blobs that cannot be sent to the LLM and would bloat the context.
+    return html.replace(/data:[^"'\s;,]+;base64,[A-Za-z0-9+/=\s]*/gi, "[base64-data-removed]");
+}
 
 const STANDARD_FONT_DATA_URL = (() => {
     try {
@@ -43,7 +50,17 @@ export type DocStore = Map<
     { storage_path: string; file_type: string; filename: string }
 >;
 
-export type WorkflowStore = Map<string, { title: string; prompt_md: string }>;
+export type WorkflowAssetEntry = {
+    id: string;
+    name: string;
+    type: "html" | "text";
+    content: string;
+};
+
+export type WorkflowStore = Map<
+    string,
+    { title: string; prompt_md: string; assets?: WorkflowAssetEntry[] }
+>;
 
 export type DocIndex = Record<
     string,
@@ -105,11 +122,12 @@ Rules:
 - For a single-page quote, set "page" to an integer. If a quote is one continuous sentence that spans two pages, set "page" to "N-M" and insert [[PAGE_BREAK]] in the quote at the page break. Otherwise, use separate citations for text on different pages
 - Put the <CITATIONS> block at the very end of the response. Omit it entirely if there are no citations
 
-DOCX GENERATION:
+DOCUMENT GENERATION:
 If asked to draft or generate a document, use the generate_docx tool to produce a downloadable Word document. Always use this tool rather than just displaying the document content inline when the user asks for a document to be created.
+If the user requests an HTML document or webpage, use generate_html instead of generate_docx.
 If the user follows up on a document you just generated and asks for changes (e.g. "make section 3 longer", "add a termination clause", "change the parties"), default to calling edit_document on that newly generated document — do NOT call generate_docx again to regenerate the whole document. Only fall back to generate_docx if the user explicitly asks for a brand-new document or the change is so sweeping that an edit would not be coherent.
-After calling generate_docx, do NOT include any download links, URLs, or markdown links to the document in your prose response — the download card is presented automatically by the UI. Do not describe formatting choices such as orientation or layout.
-After calling generate_docx, you MUST call read_document on the returned doc_id before writing your prose response. Base your description on the generated document's actual text, not on memory of what you intended to generate.
+After calling generate_docx or generate_html, do NOT include any download links, URLs, or markdown links in your prose response — the download card is presented automatically by the UI. Do not describe formatting choices such as orientation or layout.
+After calling generate_docx or generate_html, you MUST call read_document on the returned doc_id before writing your prose response. Base your description on the generated document's actual text, not on memory of what you intended to generate. After reading, write your prose response immediately — do NOT call generate_docx or generate_html again.
 Your prose response MUST include a short description of the generated document: what it is, its structure (key sections/clauses), and — if the draft was informed by any provided source documents — which sources you drew from and how. Keep it concise (typically 3–8 sentences or a short bulleted list). Refer to the document by filename, never by a download link.
 When the description makes factual claims about the contents of the newly generated document, cite the generated document with [N] markers and a <CITATIONS> block exactly as specified in the DOCUMENT CITATION INSTRUCTIONS above. If you also make factual claims about provided source documents, cite those source documents separately. In every citation entry, use the exact chat-local doc_id label for the cited document. Omit the <CITATIONS> block if the description makes no such claims.
 Heading hierarchy: always use Heading 1 before introducing Heading 2, Heading 2 before Heading 3, and so on. Never skip levels (e.g. do not jump from Heading 1 to Heading 3).
@@ -393,6 +411,70 @@ export const TOOLS = [
     {
         type: "function",
         function: {
+            name: "generate_html",
+            description:
+                "Generate an HTML document from structured content. Use this when the user explicitly asks for an HTML file or webpage. Returns a download URL for the generated file.",
+            parameters: {
+                type: "object",
+                properties: {
+                    title: {
+                        type: "string",
+                        description:
+                            "Document title (used as filename and <title> / <h1>)",
+                    },
+                    sections: {
+                        type: "array",
+                        description:
+                            "List of document sections. Each section may contain a heading, prose content, or a table.",
+                        items: {
+                            type: "object",
+                            properties: {
+                                heading: {
+                                    type: "string",
+                                    description: "Optional section heading",
+                                },
+                                level: {
+                                    type: "integer",
+                                    description: "Heading level: 1, 2, or 3",
+                                },
+                                content: {
+                                    type: "string",
+                                    description:
+                                        "Prose text or HTML markup for this section (paragraphs separated by double newlines)",
+                                },
+                                table: {
+                                    type: "object",
+                                    description:
+                                        "Optional table to render in this section",
+                                    properties: {
+                                        headers: {
+                                            type: "array",
+                                            items: { type: "string" },
+                                            description: "Column header labels",
+                                        },
+                                        rows: {
+                                            type: "array",
+                                            items: {
+                                                type: "array",
+                                                items: { type: "string" },
+                                            },
+                                            description:
+                                                "Array of rows, each row is an array of cell strings",
+                                        },
+                                    },
+                                    required: ["headers", "rows"],
+                                },
+                            },
+                        },
+                    },
+                },
+                required: ["title", "sections"],
+            },
+        },
+    },
+    {
+        type: "function",
+        function: {
             name: "edit_document",
             description:
                 "Propose edits to a user-attached .docx as tracked changes. Each edit is a precise, minimal substitution of specific words/characters, NOT a whole-line or paragraph replacement. Use read_document first. Anchor each edit with short before/after context so it can be located unambiguously. Returns per-edit annotations the UI will render as Accept/Reject cards and a download link to the edited document.",
@@ -544,16 +626,15 @@ function citationReminder(docLabel: string, filename: string): string {
 export async function enrichWithPriorEvents(
     messages: ChatMessage[],
     chatId: string | null | undefined,
-    db: ReturnType<typeof createServerSupabase>,
+    _db: unknown,
     docIndex: DocIndex,
 ): Promise<ChatMessage[]> {
     if (!chatId) return messages;
-    const { data: rows } = await db
-        .from("chat_messages")
-        .select("content, created_at")
-        .eq("chat_id", chatId)
-        .eq("role", "assistant")
-        .order("created_at", { ascending: false })
+    const rows = await getDb()
+        .select({ content: chatMessages.content })
+        .from(chatMessages)
+        .where(eq(chatMessages.chatId, chatId) && eq(chatMessages.role, "assistant") as any)
+        .orderBy(desc(chatMessages.createdAt))
         .limit(1);
 
     const lastRow = rows?.[0] as { content?: unknown } | undefined;
@@ -731,7 +812,6 @@ export async function generateDocx(
     title: string,
     sections: unknown[],
     userId: string,
-    db: ReturnType<typeof createServerSupabase>,
     options?: { landscape?: boolean; projectId?: string | null },
 ) {
     try {
@@ -1182,52 +1262,43 @@ export async function generateDocx(
         );
         const downloadUrl = buildDownloadUrl(key, filename);
 
-        // Persist to DB so generated docs are first-class documents:
-        // openable in the DocPanel and editable via edit_document. In
-        // project chats we attach to the project so it appears in the
-        // sidebar; in the general chat we leave project_id null and it
-        // stays a standalone document.
-        const { data: docRow, error: docErr } = await db
-            .from("documents")
-            .insert({
-                project_id: options?.projectId ?? null,
-                user_id: userId,
+        // Persist to DB so generated docs are first-class documents
+        const db = getDb();
+        const [docRow] = await db
+            .insert(documents)
+            .values({
+                projectId: options?.projectId ?? null,
+                userId,
                 filename,
-                file_type: "docx",
-                size_bytes: buf.byteLength,
+                fileType: "docx",
+                sizeBytes: buf.byteLength,
                 status: "ready",
             })
-            .select("id")
-            .single();
-        if (docErr || !docRow) {
-            return {
-                error: `Failed to record generated document: ${docErr?.message ?? "unknown"}`,
-            };
+            .returning({ id: documents.id });
+        if (!docRow) {
+            return { error: "Failed to record generated document" };
         }
-        const documentId = docRow.id as string;
+        const documentId = docRow.id;
 
-        const { data: versionRow, error: verErr } = await db
-            .from("document_versions")
-            .insert({
-                document_id: documentId,
-                storage_path: key,
+        const [versionRow] = await db
+            .insert(documentVersions)
+            .values({
+                documentId,
+                storagePath: key,
                 source: "generated",
-                version_number: 1,
-                display_name: filename,
+                versionNumber: 1,
+                displayName: filename,
             })
-            .select("id")
-            .single();
-        if (verErr || !versionRow) {
-            return {
-                error: `Failed to record generated document version: ${verErr?.message ?? "unknown"}`,
-            };
+            .returning({ id: documentVersions.id });
+        if (!versionRow) {
+            return { error: "Failed to record generated document version" };
         }
-        const versionId = versionRow.id as string;
+        const versionId = versionRow.id;
 
         await db
-            .from("documents")
-            .update({ current_version_id: versionId })
-            .eq("id", documentId);
+            .update(documents)
+            .set({ currentVersionId: versionId })
+            .where(eq(documents.id, documentId));
 
         return {
             filename,
@@ -1239,6 +1310,155 @@ export async function generateDocx(
             message: `Document '${filename}' has been generated successfully.`,
         };
     } catch (e) {
+        console.error("[generateDocx] error:", e);
+        return { error: String(e) };
+    }
+}
+
+// ---------------------------------------------------------------------------
+// HTML document generation
+// ---------------------------------------------------------------------------
+
+export async function generateHtml(
+    title: string,
+    sections: unknown[],
+    userId: string,
+    options?: { projectId?: string | null },
+) {
+    try {
+        const escapeHtml = (s: string) =>
+            s
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;");
+
+        const renderSection = (sec: unknown): string => {
+            const s = sec as {
+                heading?: string;
+                level?: number;
+                content?: string;
+                table?: { headers: string[]; rows: string[][] };
+            };
+            const parts: string[] = [];
+            if (s.heading) {
+                const lvl = Math.min(Math.max(s.level ?? 2, 1), 6);
+                parts.push(`<h${lvl}>${escapeHtml(s.heading)}</h${lvl}>`);
+            }
+            if (s.content) {
+                const trimmedContent = s.content.trim();
+                if (/^<[a-zA-Z!]/.test(trimmedContent)) {
+                    // Content is raw HTML — emit as-is without escaping
+                    parts.push(trimmedContent);
+                } else {
+                    const paras = trimmedContent
+                        .split(/\n{2,}/)
+                        .map((p) => p.trim())
+                        .filter(Boolean);
+                    for (const para of paras) {
+                        parts.push(`<p>${escapeHtml(para).replace(/\n/g, "<br>")}</p>`);
+                    }
+                }
+            }
+            if (s.table) {
+                const { headers, rows } = s.table;
+                const headerCells = headers
+                    .map((h) => `<th>${escapeHtml(h)}</th>`)
+                    .join("");
+                const bodyRows = rows
+                    .map(
+                        (row) =>
+                            `<tr>${row.map((c) => `<td>${escapeHtml(c)}</td>`).join("")}</tr>`,
+                    )
+                    .join("\n");
+                parts.push(
+                    `<table><thead><tr>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table>`,
+                );
+            }
+            return parts.join("\n");
+        };
+
+        const body = (sections as unknown[]).map(renderSection).join("\n\n");
+        const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${escapeHtml(title)}</title>
+<style>
+  body { font-family: 'Times New Roman', serif; font-size: 11pt; line-height: 1.6; color: #111; max-width: 860px; margin: 40px auto; padding: 0 32px; }
+  h1 { font-size: 1.4em; text-align: center; text-transform: uppercase; margin-bottom: 1.5em; }
+  h2 { font-size: 1.1em; margin-top: 1.5em; margin-bottom: 0.4em; }
+  h3 { font-size: 1em; margin-top: 1.2em; margin-bottom: 0.3em; }
+  p  { margin: 0.6em 0; }
+  table { width: 100%; border-collapse: collapse; margin: 1em 0; font-size: 0.95em; }
+  th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; vertical-align: top; }
+  thead th { background: #f2f2f2; font-weight: bold; }
+</style>
+</head>
+<body>
+<h1>${escapeHtml(title)}</h1>
+${body}
+</body>
+</html>`;
+
+        const buf = Buffer.from(html, "utf-8");
+        const safeTitle =
+            title
+                .replace(/[^a-zA-Z0-9 -]/g, "")
+                .trim()
+                .slice(0, 64) || "document";
+        const filename = `${safeTitle}.html`;
+        const docId = crypto.randomUUID().replace(/-/g, "");
+        const key = generatedDocKey(userId, docId, filename);
+
+        await uploadFile(key, buf.buffer as ArrayBuffer, "text/html; charset=utf-8");
+        const downloadUrl = buildDownloadUrl(key, filename);
+
+        const db = getDb();
+        const [docRow] = await db
+            .insert(documents)
+            .values({
+                projectId: options?.projectId ?? null,
+                userId,
+                filename,
+                fileType: "html",
+                sizeBytes: buf.byteLength,
+                status: "ready",
+            })
+            .returning({ id: documents.id });
+        if (!docRow) return { error: "Failed to record generated HTML document" };
+        const documentId = docRow.id;
+
+        const [versionRow] = await db
+            .insert(documentVersions)
+            .values({
+                documentId,
+                storagePath: key,
+                source: "generated",
+                versionNumber: 1,
+                displayName: filename,
+            })
+            .returning({ id: documentVersions.id });
+        if (!versionRow) return { error: "Failed to record generated HTML document version" };
+        const versionId = versionRow.id;
+
+        await db
+            .update(documents)
+            .set({ currentVersionId: versionId })
+            .where(eq(documents.id, documentId));
+
+        return {
+            filename,
+            download_url: downloadUrl,
+            document_id: documentId,
+            version_id: versionId,
+            version_number: 1,
+            storage_path: key,
+            message: `HTML document '${filename}' has been generated successfully.`,
+        };
+    } catch (e) {
+        console.error("[generateHtml] error:", e);
         return { error: String(e) };
     }
 }
@@ -1253,13 +1473,12 @@ export async function generateDocx(
  */
 export async function loadCurrentVersionBytes(
     documentId: string,
-    db: ReturnType<typeof createServerSupabase>,
 ): Promise<{ bytes: Buffer; storage_path: string } | null> {
-    const active = await loadActiveVersion(documentId, db);
+    const active = await loadActiveVersion(documentId);
     if (!active) return null;
-    const raw = await downloadFile(active.storage_path);
+    const raw = await downloadFile(active.storagePath);
     if (!raw) return null;
-    return { bytes: Buffer.from(raw), storage_path: active.storage_path };
+    return { bytes: Buffer.from(raw), storage_path: active.storagePath };
 }
 
 /**
@@ -1271,14 +1490,6 @@ export async function runEditDocument(params: {
     documentId: string;
     userId: string;
     edits: EditInput[];
-    db: ReturnType<typeof createServerSupabase>;
-    /**
-     * If provided, append these edits to the existing turn-scoped version
-     * (overwrites the file at storagePath and reuses the document_versions
-     * row) instead of creating a new version. Used to collapse multiple
-     * edit_document tool calls within a single assistant turn into one
-     * version.
-     */
     reuseVersion?: {
         versionId: string;
         versionNumber: number;
@@ -1296,16 +1507,17 @@ export async function runEditDocument(params: {
       }
     | { ok: false; error: string }
 > {
-    const { documentId, userId, edits, db, reuseVersion } = params;
+    const { documentId, userId, edits, reuseVersion } = params;
+    const drizzle = getDb();
 
-    const { data: doc } = await db
-        .from("documents")
-        .select("id, filename")
-        .eq("id", documentId)
-        .single();
+    const [doc] = await drizzle
+        .select({ id: documents.id, filename: documents.filename })
+        .from(documents)
+        .where(eq(documents.id, documentId))
+        .limit(1);
     if (!doc) return { ok: false, error: "Document not found." };
 
-    const current = await loadCurrentVersionBytes(documentId, db);
+    const current = await loadCurrentVersionBytes(documentId);
     if (!current) return { ok: false, error: "Could not load document bytes." };
 
     const {
@@ -1352,112 +1564,96 @@ export async function runEditDocument(params: {
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         );
 
-        // Per-document sequential number for the new assistant_edit
-        // version. The counter spans upload + user_upload + assistant_edit
-        // so the original upload is V1 and the first assistant edit is V2.
-        const { data: maxRow } = await db
-            .from("document_versions")
-            .select("version_number")
-            .eq("document_id", documentId)
-            .in("source", ["upload", "user_upload", "assistant_edit"])
-            .order("version_number", { ascending: false, nullsFirst: false })
-            .limit(1)
-            .maybeSingle();
-        nextVersionNumber =
-            ((maxRow?.version_number as number | null) ?? 1) + 1;
+        const [maxRow] = await drizzle
+            .select({ versionNumber: documentVersions.versionNumber })
+            .from(documentVersions)
+            .where(
+                eq(documentVersions.documentId, documentId) &&
+                inArray(documentVersions.source, ["upload", "user_upload", "assistant_edit"]) as any
+            )
+            .orderBy(desc(documentVersions.versionNumber))
+            .limit(1);
+        nextVersionNumber = ((maxRow?.versionNumber) ?? 1) + 1;
 
-        // Inherit the display name from the most recent prior version so
-        // user-applied renames carry forward through further edits. Falls
-        // back to the parent document's filename when no prior version has
-        // a display name (e.g. the first assistant edit of a pre-existing
-        // doc). We intentionally do NOT append "[Edited Vn]" — the version
-        // number is surfaced separately as a tag in the UI.
-        const { data: prevRow } = await db
-            .from("document_versions")
-            .select("display_name, created_at")
-            .eq("document_id", documentId)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-        const inheritedDisplayName =
-            (prevRow?.display_name as string | null) ??
-            (doc.filename as string | null) ??
-            null;
+        const [prevRow] = await drizzle
+            .select({ displayName: documentVersions.displayName })
+            .from(documentVersions)
+            .where(eq(documentVersions.documentId, documentId))
+            .orderBy(desc(documentVersions.createdAt))
+            .limit(1);
+        const inheritedDisplayName = prevRow?.displayName ?? doc.filename ?? null;
 
-        const { data: versionRow, error: verErr } = await db
-            .from("document_versions")
-            .insert({
-                document_id: documentId,
-                storage_path: newPath,
+        const [versionRow] = await drizzle
+            .insert(documentVersions)
+            .values({
+                documentId,
+                storagePath: newPath,
                 source: "assistant_edit",
-                version_number: nextVersionNumber,
-                display_name: inheritedDisplayName,
+                versionNumber: nextVersionNumber,
+                displayName: inheritedDisplayName,
             })
-            .select("id")
-            .single();
-        if (verErr || !versionRow) {
+            .returning({ id: documentVersions.id });
+        if (!versionRow) {
             return { ok: false, error: "Failed to record document version." };
         }
-        versionRowId = versionRow.id as string;
+        versionRowId = versionRow.id;
     }
 
     // Insert one row per change
     const editRows = changes.map((c) => ({
-        document_id: documentId,
-        version_id: versionRowId,
-        change_id: c.id,
-        del_w_id: c.delId ?? null,
-        ins_w_id: c.insId ?? null,
-        deleted_text: c.deletedText,
-        inserted_text: c.insertedText,
-        context_before: c.contextBefore ?? "",
-        context_after: c.contextAfter ?? "",
+        documentId,
+        versionId: versionRowId,
+        changeId: c.id,
+        delWId: c.delId ?? null,
+        insWId: c.insId ?? null,
+        deletedText: c.deletedText,
+        insertedText: c.insertedText,
+        contextBefore: c.contextBefore ?? "",
+        contextAfter: c.contextAfter ?? "",
         status: "pending" as const,
     }));
-    const { data: insertedEdits, error: editsErr } = await db
-        .from("document_edits")
-        .insert(editRows)
-        .select(
-            "id, change_id, del_w_id, ins_w_id, deleted_text, inserted_text, context_before, context_after",
-        );
+    const insertedEdits = await drizzle
+        .insert(documentEdits)
+        .values(editRows)
+        .returning({
+            id: documentEdits.id,
+            changeId: documentEdits.changeId,
+            delWId: documentEdits.delWId,
+            insWId: documentEdits.insWId,
+            deletedText: documentEdits.deletedText,
+            insertedText: documentEdits.insertedText,
+            contextBefore: documentEdits.contextBefore,
+            contextAfter: documentEdits.contextAfter,
+        });
 
-    if (editsErr || !insertedEdits) {
+    if (!insertedEdits || insertedEdits.length === 0) {
         return { ok: false, error: "Failed to record edits." };
     }
 
-    await db
-        .from("documents")
-        .update({ current_version_id: versionRowId })
-        .eq("id", documentId);
+    await drizzle
+        .update(documents)
+        .set({ currentVersionId: versionRowId })
+        .where(eq(documents.id, documentId));
 
-    const annotations: EditAnnotation[] = insertedEdits.map(
-        (r: {
-            id: string;
-            change_id: string;
-            deleted_text: string;
-            inserted_text: string;
-            context_before: string | null;
-            context_after: string | null;
-        }) => {
-            const src = changes.find((c) => c.id === r.change_id);
-            return {
-                kind: "edit",
-                edit_id: r.id,
-                document_id: documentId,
-                version_id: versionRowId,
-                version_number: nextVersionNumber,
-                change_id: r.change_id,
-                del_w_id: src?.delId,
-                ins_w_id: src?.insId,
-                deleted_text: r.deleted_text ?? "",
-                inserted_text: r.inserted_text ?? "",
-                context_before: r.context_before ?? "",
-                context_after: r.context_after ?? "",
-                reason: src?.reason,
-                status: "pending",
-            };
-        },
-    );
+    const annotations: EditAnnotation[] = insertedEdits.map((r) => {
+        const src = changes.find((c) => c.id === r.changeId);
+        return {
+            kind: "edit",
+            edit_id: r.id,
+            document_id: documentId,
+            version_id: versionRowId,
+            version_number: nextVersionNumber,
+            change_id: r.changeId,
+            del_w_id: src?.delId,
+            ins_w_id: src?.insId,
+            deleted_text: r.deletedText ?? "",
+            inserted_text: r.insertedText ?? "",
+            context_before: r.contextBefore ?? "",
+            context_after: r.contextAfter ?? "",
+            reason: src?.reason,
+            status: "pending",
+        };
+    });
 
     // Persistent, non-expiring permalink. The backend streams fresh bytes
     // on each request, so this URL stays valid as long as the file exists.
@@ -1483,7 +1679,6 @@ async function readDocumentContent(
     docStore: DocStore,
     write: (s: string) => void,
     docIndex?: DocIndex,
-    db?: ReturnType<typeof createServerSupabase>,
     opts?: { emitEvents?: boolean },
 ): Promise<string> {
     const emitEvents = opts?.emitEvents ?? true;
@@ -1524,8 +1719,8 @@ async function readDocumentContent(
         // reflects accepted/pending edits rather than the original upload.
         let raw: ArrayBuffer | null = null;
         let sourcePath = docInfo.storage_path;
-        if (documentId && db) {
-            const current = await loadCurrentVersionBytes(documentId, db);
+        if (documentId) {
+            const current = await loadCurrentVersionBytes(documentId);
             if (current) {
                 raw = current.bytes.buffer.slice(
                     current.bytes.byteOffset,
@@ -1594,6 +1789,24 @@ async function readDocumentContent(
                     `[read_document] docx mammoth fallback length=${text.length} for filename="${docInfo.filename}"`,
                 );
             }
+        } else if (docInfo.file_type === "html") {
+            const rawHtml = Buffer.from(raw).toString("utf-8");
+            text = rawHtml
+                .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+                .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+                .replace(/<[^>]+>/g, " ")
+                .replace(/&amp;/g, "&")
+                .replace(/&lt;/g, "<")
+                .replace(/&gt;/g, ">")
+                .replace(/&quot;/g, '"')
+                .replace(/&#39;/g, "'")
+                .replace(/\s{2,}/g, " ")
+                .trim();
+        } else if (docInfo.file_type === "txt" || docInfo.file_type === "md") {
+            text = Buffer.from(raw).toString("utf-8");
+            console.log(
+                `[read_document] plain-text extracted length=${text.length} for filename="${docInfo.filename}"`,
+            );
         } else {
             console.log(
                 `[read_document] unknown file_type="${docInfo.file_type}" for filename="${docInfo.filename}", trying mammoth`,
@@ -1669,7 +1882,6 @@ async function findInDocumentContent(params: {
     docStore: DocStore;
     write: (s: string) => void;
     docIndex?: DocIndex;
-    db?: ReturnType<typeof createServerSupabase>;
 }): Promise<string> {
     const {
         docLabel,
@@ -1679,7 +1891,6 @@ async function findInDocumentContent(params: {
         docStore,
         write,
         docIndex,
-        db,
     } = params;
 
     if (!query || !query.trim()) {
@@ -1710,7 +1921,6 @@ async function findInDocumentContent(params: {
         docStore,
         write,
         docIndex,
-        db,
         { emitEvents: false },
     );
     if (!text || text === "Document could not be read.") {
@@ -1838,7 +2048,6 @@ export async function runToolCalls(
     toolCalls: ToolCall[],
     docStore: DocStore,
     userId: string,
-    db: ReturnType<typeof createServerSupabase>,
     write: (s: string) => void,
     workflowStore?: WorkflowStore,
     tabularStore?: TabularCellStore,
@@ -1883,7 +2092,6 @@ export async function runToolCalls(
                 docStore,
                 write,
                 docIndex,
-                db,
             );
             const filename = docStore.get(docId)?.filename;
             const documentId = docIndex?.[docId]?.document_id;
@@ -1916,7 +2124,6 @@ export async function runToolCalls(
                 docStore,
                 write,
                 docIndex,
-                db,
             });
             const filename = docStore.get(docId)?.filename;
             if (filename) {
@@ -1961,7 +2168,6 @@ export async function runToolCalls(
                     docStore,
                     write,
                     docIndex,
-                    db,
                 );
                 const filename = docStore.get(docId)?.filename ?? docId;
                 parts.push(
@@ -1998,10 +2204,33 @@ export async function runToolCalls(
                 );
                 workflowsApplied.push({ workflow_id: wfId, title: wf.title });
             }
+            let workflowContent = wf ? wf.prompt_md : `Workflow '${wfId}' not found.`;
+            if (wf?.assets && wf.assets.length > 0) {
+                const htmlAssets = wf.assets.filter((a) => a.type === "html");
+                const textAssets = wf.assets.filter((a) => a.type === "text");
+                if (htmlAssets.length > 0) {
+                    workflowContent += "\n\n---\nHTML TEMPLATE ASSETS:\n";
+                    workflowContent +=
+                        "When generating an HTML document for this workflow, you MUST use the template(s) below as the structural basis. " +
+                        "Preserve the layout, styles, and placeholders defined in the template. " +
+                        "Fill in the dynamic content where appropriate. " +
+                        "Use generate_html and replicate the template structure in your sections. " +
+                        "Do NOT send the raw template back to the user — produce the filled document.\n";
+                    for (const asset of htmlAssets) {
+                        workflowContent += `\n### Template: ${asset.name}\n\`\`\`html\n${asset.content}\n\`\`\`\n`;
+                    }
+                }
+                if (textAssets.length > 0) {
+                    workflowContent += "\n\n---\nTEXT ASSETS:\n";
+                    for (const asset of textAssets) {
+                        workflowContent += `\n### ${asset.name}\n${asset.content}\n`;
+                    }
+                }
+            }
             toolResults.push({
                 role: "tool",
                 tool_call_id: tc.id,
-                content: wf ? wf.prompt_md : `Workflow '${wfId}' not found.`,
+                content: workflowContent,
             });
         } else if (tc.function.name === "read_table_cells" && tabularStore) {
             const colIndices = args.col_indices as number[] | undefined;
@@ -2137,7 +2366,6 @@ export async function runToolCalls(
                     documentId: indexed.document_id,
                     userId,
                     edits,
-                    db,
                     reuseVersion,
                 });
 
@@ -2267,11 +2495,10 @@ export async function runToolCalls(
                     // changes rolled in), no point re-fetching per copy.
                     const active = await loadActiveVersion(
                         sourceIndexed.document_id,
-                        db,
                     );
                     const sourcePath =
-                        active?.storage_path ?? sourceInfo.storage_path;
-                    const sourcePdfPath = active?.pdf_storage_path ?? null;
+                        active?.storagePath ?? sourceInfo.storage_path;
+                    const sourcePdfPath = active?.pdfStoragePath ?? null;
                     const raw = await downloadFile(sourcePath);
                     const pdfBytes = sourcePdfPath
                         ? await downloadFile(sourcePdfPath)
@@ -2311,34 +2538,22 @@ export async function runToolCalls(
 
                         // Bulk insert N documents in one round-trip.
                         const docRows = filenames.map((fn) => ({
-                            project_id: projectId,
-                            user_id: userId,
+                            projectId,
+                            userId,
                             filename: fn,
-                            file_type: sourceInfo.file_type,
-                            size_bytes: raw.byteLength,
-                            status: "ready",
+                            fileType: sourceInfo.file_type,
+                            sizeBytes: raw.byteLength,
+                            status: "ready" as const,
                         }));
-                        const { data: insertedDocs, error: docErr } = await db
-                            .from("documents")
-                            .insert(docRows)
-                            .select("id, filename");
-                        if (
-                            docErr ||
-                            !insertedDocs ||
-                            insertedDocs.length === 0
-                        ) {
-                            fail(
-                                `Failed to record replicated documents: ${docErr?.message ?? "unknown"}`,
-                            );
+                        const drizzle = getDb();
+                        const insertedDocs = await drizzle
+                            .insert(documents)
+                            .values(docRows)
+                            .returning({ id: documents.id, filename: documents.filename });
+                        if (!insertedDocs || insertedDocs.length === 0) {
+                            fail("Failed to record replicated documents.");
                         } else {
-                            // Preserve the request order so each row pairs
-                            // with the right filename. Supabase returns
-                            // inserted rows in the same order as the
-                            // payload.
-                            const newDocs = insertedDocs as {
-                                id: string;
-                                filename: string;
-                            }[];
+                            const newDocs = insertedDocs;
                             const contentType =
                                 sourceInfo.file_type === "pdf"
                                     ? "application/pdf"
@@ -2380,36 +2595,23 @@ export async function runToolCalls(
 
                             // Bulk insert N versions in one round-trip.
                             const versionRows = newDocs.map((d, idx) => ({
-                                document_id: d.id,
-                                storage_path: newKeys[idx],
-                                pdf_storage_path: newPdfKeys[idx],
-                                source: "upload",
-                                version_number: 1,
-                                display_name: d.filename,
+                                documentId: d.id,
+                                storagePath: newKeys[idx],
+                                pdfStoragePath: newPdfKeys[idx],
+                                source: "upload" as const,
+                                versionNumber: 1,
+                                displayName: d.filename,
                             }));
-                            const { data: insertedVersions, error: verErr } =
-                                await db
-                                    .from("document_versions")
-                                    .insert(versionRows)
-                                    .select("id, document_id");
-                            if (
-                                verErr ||
-                                !insertedVersions ||
-                                insertedVersions.length !== newDocs.length
-                            ) {
-                                fail(
-                                    `Failed to record replicated document versions: ${verErr?.message ?? "unknown"}`,
-                                );
+                            const insertedVersions = await drizzle
+                                .insert(documentVersions)
+                                .values(versionRows)
+                                .returning({ id: documentVersions.id, documentId: documentVersions.documentId });
+                            if (!insertedVersions || insertedVersions.length !== newDocs.length) {
+                                fail("Failed to record replicated document versions.");
                             } else {
-                                const versionByDocId = new Map<
-                                    string,
-                                    string
-                                >();
-                                for (const v of insertedVersions as {
-                                    id: string;
-                                    document_id: string;
-                                }[]) {
-                                    versionByDocId.set(v.document_id, v.id);
+                                const versionByDocId = new Map<string, string>();
+                                for (const v of insertedVersions) {
+                                    versionByDocId.set(v.documentId, v.id);
                                 }
 
                                 // current_version_id has to be a per-row
@@ -2418,13 +2620,10 @@ export async function runToolCalls(
                                 // instead of sequential awaits.
                                 await Promise.all(
                                     newDocs.map((d) =>
-                                        db
-                                            .from("documents")
-                                            .update({
-                                                current_version_id:
-                                                    versionByDocId.get(d.id),
-                                            })
-                                            .eq("id", d.id),
+                                        drizzle
+                                            .update(documents)
+                                            .set({ currentVersionId: versionByDocId.get(d.id) })
+                                            .where(eq(documents.id, d.id)),
                                     ),
                                 );
 
@@ -2516,14 +2715,15 @@ export async function runToolCalls(
                 }
             }
         } else if (tc.function.name === "generate_docx") {
-            const title = args.title as string;
+            try {
+            const title = (args.title as string | undefined) ?? "document";
             const landscape = !!args.landscape;
             console.log(
                 `[generate_docx] title="${title}" landscape=${landscape} args.landscape=${args.landscape}`,
             );
             const previewFilename = `${
                 title
-                    .replace(/[^a-zA-Z0-9 _-]/g, "")
+                    .replace(/[^a-zA-Z0-9 -]/g, "")
                     .trim()
                     .slice(0, 64) || "document"
             }.docx`;
@@ -2534,7 +2734,6 @@ export async function runToolCalls(
                 title,
                 args.sections as unknown[],
                 userId,
-                db,
                 { landscape, projectId: projectId ?? null },
             );
             let newDocLabel: string | null = null;
@@ -2612,6 +2811,102 @@ export async function runToolCalls(
                 tool_call_id: tc.id,
                 content: JSON.stringify(toolResultPayload),
             });
+            } catch (e) {
+                console.error("[generate_docx dispatch] unexpected error:", e);
+                toolResults.push({
+                    role: "tool",
+                    tool_call_id: tc.id,
+                    content: JSON.stringify({ error: `generate_docx failed: ${String(e)}` }),
+                });
+            }
+        } else if (tc.function.name === "generate_html") {
+            try {
+            const title = (args.title as string | undefined) ?? "document";
+            const previewFilename = `${
+                title
+                    .replace(/[^a-zA-Z0-9 -]/g, "")
+                    .trim()
+                    .slice(0, 64) || "document"
+            }.html`;
+            write(
+                `data: ${JSON.stringify({ type: "doc_created_start", filename: previewFilename })}\n\n`,
+            );
+            const result = await generateHtml(
+                title,
+                args.sections as unknown[],
+                userId,
+                { projectId: projectId ?? null },
+            );
+            let newDocLabel: string | null = null;
+            if ("filename" in result && "download_url" in result) {
+                const dlFilename = result.filename as string;
+                const dlUrl = result.download_url as string;
+                const documentId = (result as { document_id?: string }).document_id;
+                const versionId = (result as { version_id?: string }).version_id;
+                const versionNumber =
+                    (result as { version_number?: number }).version_number ?? null;
+                const storagePath = (result as { storage_path?: string }).storage_path;
+
+                if (documentId && storagePath && docIndex) {
+                    const existingLabels = new Set(Object.keys(docIndex));
+                    let i = 0;
+                    while (existingLabels.has(`doc-${i}`)) i++;
+                    newDocLabel = `doc-${i}`;
+                    docIndex[newDocLabel] = {
+                        document_id: documentId,
+                        filename: dlFilename,
+                    };
+                    docStore.set(newDocLabel, {
+                        storage_path: storagePath,
+                        file_type: "html",
+                        filename: dlFilename,
+                    });
+                }
+
+                write(
+                    `data: ${JSON.stringify({
+                        type: "doc_created",
+                        filename: dlFilename,
+                        download_url: dlUrl,
+                        document_id: documentId,
+                        version_id: versionId,
+                        version_number: versionNumber,
+                    })}\n\n`,
+                );
+                docsCreated.push({
+                    filename: dlFilename,
+                    download_url: dlUrl,
+                    document_id: documentId,
+                    version_id: versionId,
+                    version_number: versionNumber,
+                });
+            } else {
+                write(
+                    `data: ${JSON.stringify({ type: "doc_created", filename: previewFilename, download_url: "" })}\n\n`,
+                );
+            }
+            const { download_url: _dlUrl, storage_path: _sp, ...safeHtmlResult } =
+                result as Record<string, unknown>;
+            const htmlToolPayload = newDocLabel
+                ? {
+                      ...safeHtmlResult,
+                      doc_id: newDocLabel,
+                      next_required_action: `Before writing your final response, call read_document with doc_id "${newDocLabel}". Describe and cite the generated document using doc_id "${newDocLabel}", not the source/template document. After reading, write your prose response immediately — do NOT call generate_html or generate_docx again.`,
+                  }
+                : safeHtmlResult;
+            toolResults.push({
+                role: "tool",
+                tool_call_id: tc.id,
+                content: JSON.stringify(htmlToolPayload),
+            });
+            } catch (e) {
+                console.error("[generate_html dispatch] unexpected error:", e);
+                toolResults.push({
+                    role: "tool",
+                    tool_call_id: tc.id,
+                    content: JSON.stringify({ error: `generate_html failed: ${String(e)}` }),
+                });
+            }
         }
     }
 
@@ -2715,7 +3010,6 @@ export async function runLLMStream(params: {
     docStore: DocStore;
     docIndex: DocIndex;
     userId: string;
-    db: ReturnType<typeof createServerSupabase>;
     write: (s: string) => void;
     extraTools?: unknown[];
     workflowStore?: WorkflowStore;
@@ -2735,7 +3029,6 @@ export async function runLLMStream(params: {
         docStore,
         docIndex,
         userId,
-        db,
         write,
         extraTools,
         workflowStore,
@@ -2899,7 +3192,6 @@ export async function runLLMStream(params: {
                 toolCalls,
                 docStore,
                 userId,
-                db,
                 write,
                 workflowStore,
                 tabularStore,
@@ -3049,11 +3341,11 @@ export function extractAnnotations(
 export async function buildDocContext(
     messages: ChatMessage[],
     userId: string,
-    db: ReturnType<typeof createServerSupabase>,
     chatId?: string | null,
 ): Promise<{ docIndex: DocIndex; docStore: DocStore }> {
     const docIndex: DocIndex = {};
     const docStore: DocStore = new Map();
+    const drizzle = getDb();
 
     const documentIds = new Set<string>();
     for (const m of messages) {
@@ -3069,13 +3361,12 @@ export async function buildDocContext(
     // the model loses access to generated docs after the turn that created
     // them, and can't call edit_document / read_document on them.
     if (chatId) {
-        const { data: rows } = await db
-            .from("chat_messages")
-            .select("content")
-            .eq("chat_id", chatId)
-            .eq("role", "assistant");
-        for (const row of rows ?? []) {
-            const content = (row as { content?: unknown }).content;
+        const rows = await drizzle
+            .select({ content: chatMessages.content })
+            .from(chatMessages)
+            .where(and(eq(chatMessages.chatId, chatId), eq(chatMessages.role, "assistant")));
+        for (const row of rows) {
+            const content = row.content;
             if (!Array.isArray(content)) continue;
             for (const ev of content as Record<string, unknown>[]) {
                 if (
@@ -3090,34 +3381,45 @@ export async function buildDocContext(
 
     const ids = [...documentIds];
     if (ids.length > 0) {
-        const { data: docs } = await db
-            .from("documents")
-            .select("id, filename, file_type, current_version_id, status")
-            .in("id", ids)
-            .eq("user_id", userId)
-            .eq("status", "ready");
+        const docList = await drizzle
+            .select({
+                id: documents.id,
+                filename: documents.filename,
+                fileType: documents.fileType,
+                currentVersionId: documents.currentVersionId,
+                status: documents.status,
+            })
+            .from(documents)
+            .where(and(inArray(documents.id, ids), eq(documents.userId, userId), eq(documents.status, "ready")));
 
-        const docList = (docs ?? []) as unknown as {
+        type DocRow = {
             id: string;
             filename: string;
             file_type: string;
-            current_version_id?: string | null;
-            active_version_number?: number | null;
-            storage_path?: string | null;
-        }[];
-        await attachActiveVersionPaths(db, docList);
-        for (let i = 0; i < docList.length; i++) {
-            const doc = docList[i];
-            if (!doc.storage_path) continue;
+            currentVersionId: string | null | undefined;
+            storagePath?: string | null;
+            pdfStoragePath?: string | null;
+            activeVersionNumber?: number | null;
+        };
+        const enriched = await attachActiveVersionPaths(docList.map((d): DocRow => ({
+            id: d.id,
+            filename: d.filename,
+            file_type: d.fileType ?? "",
+            currentVersionId: d.currentVersionId,
+        })));
+
+        for (let i = 0; i < enriched.length; i++) {
+            const doc = enriched[i];
+            if (!doc.storagePath) continue;
             const docLabel = `doc-${i}`;
             docIndex[docLabel] = {
                 document_id: doc.id,
                 filename: doc.filename,
-                version_id: doc.current_version_id ?? null,
-                version_number: doc.active_version_number ?? null,
+                version_id: doc.currentVersionId ?? null,
+                version_number: doc.activeVersionNumber ?? null,
             };
             docStore.set(docLabel, {
-                storage_path: doc.storage_path,
+                storage_path: doc.storagePath,
                 file_type: doc.file_type,
                 filename: doc.filename,
             });
@@ -3138,7 +3440,6 @@ export async function buildDocContext(
 export async function buildProjectDocContext(
     projectId: string,
     _userId: string,
-    db: ReturnType<typeof createServerSupabase>,
 ): Promise<{
     docIndex: DocIndex;
     docStore: DocStore;
@@ -3146,41 +3447,60 @@ export async function buildProjectDocContext(
 }> {
     const docIndex: DocIndex = {};
     const docStore: DocStore = new Map();
+    const drizzle = getDb();
 
-    const [{ data: docs }, { data: folders }] = await Promise.all([
-        db
-            .from("documents")
-            .select(
-                "id, filename, file_type, current_version_id, status, folder_id",
-            )
-            .eq("project_id", projectId)
-            .eq("status", "ready")
-            .order("created_at", { ascending: true }),
-        db
-            .from("project_subfolders")
-            .select("id, name, parent_folder_id")
-            .eq("project_id", projectId),
+    const { projectSubfolders } = await import("../db");
+
+    const [rawDocs, folders] = await Promise.all([
+        drizzle
+            .select({
+                id: documents.id,
+                filename: documents.filename,
+                fileType: documents.fileType,
+                currentVersionId: documents.currentVersionId,
+                status: documents.status,
+                folderId: documents.folderId,
+            })
+            .from(documents)
+            .where(eq(documents.projectId, projectId) && eq(documents.status, "ready") as any)
+            .orderBy(documents.createdAt),
+        drizzle
+            .select({
+                id: projectSubfolders.id,
+                name: projectSubfolders.name,
+                parentFolderId: projectSubfolders.parentFolderId,
+            })
+            .from(projectSubfolders)
+            .where(eq(projectSubfolders.projectId, projectId)),
     ]);
-    const docList = (docs ?? []) as unknown as {
+
+    type ProjDocRow = {
         id: string;
         filename: string;
         file_type: string;
-        current_version_id?: string | null;
-        active_version_number?: number | null;
-        folder_id?: string | null;
-        storage_path?: string | null;
-    }[];
-    await attachActiveVersionPaths(db, docList);
+        currentVersionId: string | null | undefined;
+        folder_id: string | null | undefined;
+        storagePath?: string | null;
+        pdfStoragePath?: string | null;
+        activeVersionNumber?: number | null;
+    };
+    const docList = await attachActiveVersionPaths(rawDocs.map((d): ProjDocRow => ({
+        id: d.id,
+        filename: d.filename,
+        file_type: d.fileType ?? "",
+        currentVersionId: d.currentVersionId,
+        folder_id: d.folderId,
+    })));
 
     // Build folder id → full path map
     const folderMap = new Map<
         string,
         { name: string; parent_folder_id: string | null }
     >();
-    for (const f of folders ?? [])
+    for (const f of folders)
         folderMap.set(f.id, {
             name: f.name,
-            parent_folder_id: f.parent_folder_id,
+            parent_folder_id: f.parentFolderId ?? null,
         });
 
     function resolvePath(folderId: string | null): string {
@@ -3200,16 +3520,16 @@ export async function buildProjectDocContext(
 
     for (let i = 0; i < docList.length; i++) {
         const doc = docList[i];
-        if (!doc.storage_path) continue;
+        if (!doc.storagePath) continue;
         const docLabel = `doc-${i}`;
         docIndex[docLabel] = {
             document_id: doc.id,
             filename: doc.filename,
-            version_id: doc.current_version_id ?? null,
-            version_number: doc.active_version_number ?? null,
+            version_id: doc.currentVersionId ?? null,
+            version_number: doc.activeVersionNumber ?? null,
         };
         docStore.set(docLabel, {
-            storage_path: doc.storage_path,
+            storage_path: doc.storagePath,
             file_type: doc.file_type,
             filename: doc.filename,
         });
@@ -3232,11 +3552,11 @@ export async function buildProjectDocContext(
 export async function buildWorkflowStore(
     userId: string,
     userEmail: string | null | undefined,
-    db: ReturnType<typeof createServerSupabase>,
 ): Promise<WorkflowStore> {
     const { BUILTIN_WORKFLOWS } = await import("./builtinWorkflows");
     const store: WorkflowStore = new Map();
     const normalizedUserEmail = (userEmail ?? "").trim().toLowerCase();
+    const drizzle = getDb();
 
     // Seed built-ins first
     for (const wf of BUILTIN_WORKFLOWS) {
@@ -3244,41 +3564,71 @@ export async function buildWorkflowStore(
     }
 
     // Then overlay user-owned assistant workflows.
-    const { data: workflows } = await db
-        .from("workflows")
-        .select("id, title, prompt_md")
-        .eq("user_id", userId)
-        .eq("type", "assistant");
-    for (const wf of workflows ?? []) {
-        if (wf.prompt_md) {
-            store.set(wf.id, { title: wf.title, prompt_md: wf.prompt_md });
+    const userWorkflows = await drizzle
+        .select({ id: workflows.id, title: workflows.title, promptMd: workflows.promptMd })
+        .from(workflows)
+        .where(eq(workflows.userId, userId) && eq(workflows.type, "assistant") as any);
+    for (const wf of userWorkflows) {
+        if (wf.promptMd) {
+            store.set(wf.id, { title: wf.title, prompt_md: wf.promptMd });
         }
     }
 
     // Shared assistant workflows must also be readable by workflow tools.
     if (normalizedUserEmail) {
-        const { data: shares } = await db
-            .from("workflow_shares")
-            .select("workflow_id")
-            .eq("shared_with_email", normalizedUserEmail);
-        const sharedIds = [
-            ...new Set((shares ?? []).map((share) => share.workflow_id)),
-        ];
+        const shares = await drizzle
+            .select({ workflowId: workflowShares.workflowId })
+            .from(workflowShares)
+            .where(eq(workflowShares.sharedWithEmail, normalizedUserEmail));
+        const sharedIds = [...new Set(shares.map((s) => s.workflowId))];
         if (sharedIds.length > 0) {
-            const { data: sharedWorkflows } = await db
-                .from("workflows")
-                .select("id, title, prompt_md")
-                .in("id", sharedIds)
-                .eq("type", "assistant");
-            for (const wf of sharedWorkflows ?? []) {
-                if (wf.prompt_md) {
-                    store.set(wf.id, {
-                        title: wf.title,
-                        prompt_md: wf.prompt_md,
-                    });
+            const sharedWorkflows = await drizzle
+                .select({ id: workflows.id, title: workflows.title, promptMd: workflows.promptMd })
+                .from(workflows)
+                .where(inArray(workflows.id, sharedIds) && eq(workflows.type, "assistant") as any);
+            for (const wf of sharedWorkflows) {
+                if (wf.promptMd) {
+                    store.set(wf.id, { title: wf.title, prompt_md: wf.promptMd });
                 }
             }
         }
     }
+
+    // Attach HTML/text assets to every workflow now in the store.
+    const workflowIds = [...store.keys()].filter(
+        (id) => !BUILTIN_WORKFLOWS.some((b) => b.id === id),
+    );
+    if (workflowIds.length > 0) {
+        const assetRows = await drizzle
+            .select({
+                id: workflowAssets.id,
+                workflowId: workflowAssets.workflowId,
+                name: workflowAssets.name,
+                type: workflowAssets.type,
+                content: workflowAssets.content,
+            })
+            .from(workflowAssets)
+            .where(
+                inArray(workflowAssets.workflowId, workflowIds) &&
+                inArray(workflowAssets.type, ["html", "text"]) as any,
+            );
+
+        for (const row of assetRows) {
+            const entry = store.get(row.workflowId);
+            if (!entry || !row.content) continue;
+            const sanitized = row.type === "html"
+                ? stripBase64FromHtml(row.content)
+                : row.content;
+            const asset: WorkflowAssetEntry = {
+                id: row.id,
+                name: row.name,
+                type: row.type as "html" | "text",
+                content: sanitized,
+            };
+            if (!entry.assets) entry.assets = [];
+            entry.assets.push(asset);
+        }
+    }
+
     return store;
 }

@@ -531,6 +531,20 @@ export function DocView({
         }
     }
 
+    if (result?.type === "plaintext") {
+        return (
+            <div
+                className={`relative flex flex-col flex-1 overflow-hidden ${bordered ? "border border-gray-200" : ""} ${rounded ? "rounded-xl" : ""}`}
+            >
+                <div className="flex-1 overflow-auto bg-white px-6 py-5">
+                    <pre className="whitespace-pre-wrap break-words font-mono text-sm text-gray-800 leading-relaxed">
+                        {result.text}
+                    </pre>
+                </div>
+            </div>
+        );
+    }
+
     if (fallbackToDocx && doc?.document_id) {
         return (
             <DocxView

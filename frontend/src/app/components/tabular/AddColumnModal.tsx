@@ -5,9 +5,10 @@ import { createPortal } from "react-dom";
 import { ChevronDown, Plus, X } from "lucide-react";
 import type { ColumnConfig, ColumnFormat } from "../shared/types";
 import { generateTabularColumnPrompt } from "@/app/lib/mikeApi";
-import { FORMAT_OPTIONS, formatLabel, formatIcon } from "./columnFormat";
+import { getFormatOptions, formatLabel, formatIcon } from "./columnFormat";
 import { TAG_COLORS } from "./pillUtils";
-import { getPresetConfig, PROMPT_PRESETS } from "./columnPresets";
+import { getPresetConfig, getPromptPresets } from "./columnPresets";
+import { useLocale, useTranslations } from "next-intl";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -43,6 +44,9 @@ interface Props {
 }
 
 export function AddColumnModal({ open, existingCount, onClose, onAdd, editingColumn, onSave, onDelete }: Props) {
+    const t = useTranslations("tabular");
+    const tc = useTranslations("common");
+    const locale = useLocale();
     const isEditing = !!editingColumn;
     const [columns, setColumns] = useState<ColumnDraft[]>([{ ...EMPTY_DRAFT }]);
     const [generatingIndices, setGeneratingIndices] = useState<number[]>([]);
@@ -155,6 +159,7 @@ export function AddColumnModal({ open, existingCount, onClose, onAdd, editingCol
             const { prompt } = await generateTabularColumnPrompt(title, {
                 format: col.format,
                 tags: col.format === "tag" ? col.tags : undefined,
+                locale,
             });
             updateColumn(index, { prompt });
         } finally {
@@ -196,9 +201,9 @@ export function AddColumnModal({ open, existingCount, onClose, onAdd, editingCol
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 pt-5 pb-2">
                     <div className="flex items-center gap-1.5 text-xs text-gray-400">
-                        <span>Tabular Review</span>
+                        <span>{t("title")}</span>
                         <span>›</span>
-                        <span>{isEditing ? "Edit column" : "New column"}</span>
+                        <span>{isEditing ? t("modal.editColumn") : t("modal.newColumn")}</span>
                     </div>
                     <button
                         onClick={handleClose}
@@ -236,7 +241,7 @@ export function AddColumnModal({ open, existingCount, onClose, onAdd, editingCol
                                             onChange={(e) => {
                                                 const name = e.target.value;
                                                 const preset =
-                                                    getPresetConfig(name);
+                                                    getPresetConfig(t, name);
                                                 updateColumn(index, {
                                                     name,
                                                     ...(preset
@@ -251,7 +256,7 @@ export function AddColumnModal({ open, existingCount, onClose, onAdd, editingCol
                                                         : {}),
                                                 });
                                             }}
-                                            placeholder="Column name"
+                                            placeholder={t("column.name")}
                                             className="flex-1 text-2xl font-serif text-gray-800 placeholder-gray-400 focus:outline-none bg-transparent"
                                             autoFocus={index === 0}
                                         />
@@ -264,7 +269,7 @@ export function AddColumnModal({ open, existingCount, onClose, onAdd, editingCol
                                                         : index,
                                                 )
                                             }
-                                            title="Column presets"
+                                            title={t("column.presets")}
                                             className="mt-1.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
                                         >
                                             <ChevronDown
@@ -281,9 +286,9 @@ export function AddColumnModal({ open, existingCount, onClose, onAdd, editingCol
                                                     }}
                                                     className="w-full px-3 py-2 text-left text-sm text-gray-400 hover:bg-gray-50 transition-colors border-b border-gray-100"
                                                 >
-                                                    No Preset
+                                                    {t("presets.noPreset")}
                                                 </button>
-                                                {PROMPT_PRESETS.map(
+                                                {getPromptPresets(t).map(
                                                     (preset) => (
                                                         <button
                                                             key={preset.name}
@@ -329,7 +334,7 @@ export function AddColumnModal({ open, existingCount, onClose, onAdd, editingCol
                                 {/* Format */}
                                 <div className="mt-4">
                                     <label className="text-sm font-medium text-gray-500">
-                                        Format
+                                        {t("column.format")}
                                     </label>
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
@@ -343,7 +348,7 @@ export function AddColumnModal({ open, existingCount, onClose, onAdd, editingCol
                                                             <Icon className="h-3.5 w-3.5 text-gray-400" />
                                                         );
                                                     })()}
-                                                    {formatLabel(column.format)}
+                                                    {formatLabel(t, column.format)}
                                                 </span>
                                                 <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
                                             </button>
@@ -362,7 +367,7 @@ export function AddColumnModal({ open, existingCount, onClose, onAdd, editingCol
                                                     })
                                                 }
                                             >
-                                                {FORMAT_OPTIONS.map((o) => (
+                                                {getFormatOptions(t).map((o) => (
                                                     <DropdownMenuRadioItem
                                                         key={o.value}
                                                         value={o.value}
@@ -380,7 +385,7 @@ export function AddColumnModal({ open, existingCount, onClose, onAdd, editingCol
                                 {column.format === "tag" && (
                                     <div className="mt-3">
                                         <label className="text-sm font-medium text-gray-500">
-                                            Tags
+                                            {t("column.tags")}
                                         </label>
                                         <div className="mt-1 flex flex-wrap gap-1.5 rounded-md border border-gray-200 px-2 py-1.5 focus-within:border-gray-400">
                                             {column.tags.map((tag, tagIdx) => (
@@ -422,12 +427,12 @@ export function AddColumnModal({ open, existingCount, onClose, onAdd, editingCol
                                                     handleTagKeyDown(e, index)
                                                 }
                                                 onBlur={() => commitTag(index)}
-                                                placeholder="Add tag…"
+                                                placeholder={t("column.addTagPlaceholder")}
                                                 className="min-w-[80px] flex-1 bg-transparent text-sm text-gray-700 placeholder-gray-400 focus:outline-none"
                                             />
                                         </div>
                                         <p className="mt-1 text-xs text-gray-400">
-                                            Press Enter or comma to add a tag.
+                                            {t("column.tagHint")}
                                         </p>
                                     </div>
                                 )}
@@ -435,7 +440,7 @@ export function AddColumnModal({ open, existingCount, onClose, onAdd, editingCol
                                 {/* Prompt */}
                                 <div className="mt-4 flex items-center justify-between">
                                     <label className="text-sm font-medium text-gray-500">
-                                        Prompt
+                                        {t("column.prompt")}
                                     </label>
                                     <button
                                         type="button"
@@ -453,7 +458,7 @@ export function AddColumnModal({ open, existingCount, onClose, onAdd, editingCol
                                         ) : (
                                             <Plus className="h-4 w-4" />
                                         )}
-                                        Auto-Generate Prompt
+                                        {t("column.autoGenerate")}
                                     </button>
                                 </div>
                                 <textarea
@@ -464,7 +469,7 @@ export function AddColumnModal({ open, existingCount, onClose, onAdd, editingCol
                                             prompt: e.target.value,
                                         })
                                     }
-                                    placeholder="Write the analysis prompt — describe what Mike should extract from each document for this column…"
+                                    placeholder={t("column.promptPlaceholder")}
                                     className="mt-2 w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:border-gray-400 focus:outline-none bg-transparent resize-none leading-relaxed"
                                 />
                             </div>
@@ -477,7 +482,7 @@ export function AddColumnModal({ open, existingCount, onClose, onAdd, editingCol
                                 className="inline-flex items-center gap-1.5 text-sm text-gray-500 transition-colors hover:text-gray-900"
                             >
                                 <Plus className="h-4 w-4" />
-                                Add another column
+                                {t("column.addAnother")}
                             </button>
                         )}
                     </div>
@@ -491,7 +496,7 @@ export function AddColumnModal({ open, existingCount, onClose, onAdd, editingCol
                                     onClick={onDelete}
                                     className="rounded-lg px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors"
                                 >
-                                    Delete
+                                    {tc("actions.delete")}
                                 </button>
                             )}
                         </div>
@@ -501,7 +506,7 @@ export function AddColumnModal({ open, existingCount, onClose, onAdd, editingCol
                                 onClick={handleClose}
                                 className="rounded-lg px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 transition-colors"
                             >
-                                Cancel
+                                {tc("actions.cancel")}
                             </button>
                             <button
                                 type="submit"
@@ -510,7 +515,7 @@ export function AddColumnModal({ open, existingCount, onClose, onAdd, editingCol
                                 )}
                                 className="rounded-lg bg-gray-900 px-5 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-40 transition-colors"
                             >
-                                {isEditing ? "Save changes" : "Add columns"}
+                                {isEditing ? t("modal.saveChanges") : t("modal.addColumns")}
                             </button>
                         </div>
                     </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
     Upload,
@@ -85,6 +86,8 @@ interface Props {
 }
 
 export function ProjectPage({ projectId, initialTab = "documents" }: Props) {
+    const t = useTranslations("projects");
+    const tc = useTranslations("common");
     const [project, setProject] = useState<MikeProject | null>(null);
     const [folders, setFolders] = useState<MikeFolder[]>([]);
     const [chats, setChats] = useState<MikeChat[]>([]);
@@ -503,7 +506,7 @@ export function ProjectPage({ projectId, initialTab = "documents" }: Props) {
         // Backend only lets the doc creator delete. Warn the requester
         // instead of letting the request 404 silently.
         if (doc && user?.id && doc.user_id && doc.user_id !== user.id) {
-            setOwnerOnlyAction("delete this document");
+            setOwnerOnlyAction(t("ownerOnly.deleteDocument"));
             return;
         }
         await deleteDocument(docId);
@@ -554,7 +557,7 @@ export function ProjectPage({ projectId, initialTab = "documents" }: Props) {
         // Server-side this would 404 silently for non-owners; surface a
         // clear permission warning instead.
         if (project && project.is_owner === false) {
-            setOwnerOnlyAction("rename this project");
+            setOwnerOnlyAction(t("ownerOnly.renameProject"));
             return;
         }
         setProject((prev) => (prev ? { ...prev, name: newName } : prev));
@@ -567,7 +570,7 @@ export function ProjectPage({ projectId, initialTab = "documents" }: Props) {
         if (!trimmed) return;
         const chat = chats.find((c) => c.id === chatId);
         if (chat && user?.id && chat.user_id !== user.id) {
-            setOwnerOnlyAction("rename this chat");
+            setOwnerOnlyAction(t("ownerOnly.renameChat"));
             return;
         }
         setChats((prev) => prev.map((c) => (c.id === chatId ? { ...c, title: trimmed } : c)));
@@ -580,7 +583,7 @@ export function ProjectPage({ projectId, initialTab = "documents" }: Props) {
         if (!trimmed) return;
         const review = projectReviews.find((r) => r.id === reviewId);
         if (review && user?.id && review.user_id !== user.id) {
-            setOwnerOnlyAction("rename this tabular review");
+            setOwnerOnlyAction(t("ownerOnly.renameReview"));
             return;
         }
         setProjectReviews((prev) => prev.map((r) => (r.id === reviewId ? { ...r, title: trimmed } : r)));
@@ -602,7 +605,7 @@ export function ProjectPage({ projectId, initialTab = "documents" }: Props) {
         const blob = await downloadDocumentsZip(ids);
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
-        a.download = "documents.zip";
+        a.download = t("downloadZipName");
         a.click();
         URL.revokeObjectURL(a.href);
     }
@@ -636,7 +639,7 @@ export function ProjectPage({ projectId, initialTab = "documents" }: Props) {
         );
         if (blocked > 0) {
             setOwnerOnlyAction(
-                `delete ${blocked} of the selected documents — only the document creator can delete a document`,
+                t("ownerOnly.deleteSelectedDocuments", { blocked }),
             );
         }
     }
@@ -654,7 +657,7 @@ export function ProjectPage({ projectId, initialTab = "documents" }: Props) {
         setChats((prev) => prev.filter((c) => !owned.includes(c.id)));
         if (blocked > 0) {
             setOwnerOnlyAction(
-                `delete ${blocked} of the selected chats — only the chat creator can delete a chat`,
+                t("ownerOnly.deleteSelectedChats", { blocked }),
             );
         }
     }
@@ -672,14 +675,14 @@ export function ProjectPage({ projectId, initialTab = "documents" }: Props) {
         setProjectReviews((prev) => prev.filter((r) => !owned.includes(r.id)));
         if (blocked > 0) {
             setOwnerOnlyAction(
-                `delete ${blocked} of the selected reviews — only the review creator can delete a review`,
+                t("ownerOnly.deleteSelectedReviews", { blocked }),
             );
         }
     }
 
     async function handleDeleteChatRow(chat: MikeChat) {
         if (user?.id && chat.user_id !== user.id) {
-            setOwnerOnlyAction("delete this chat");
+            setOwnerOnlyAction(t("ownerOnly.deleteChat"));
             return;
         }
         await deleteChat(chat.id);
@@ -688,7 +691,7 @@ export function ProjectPage({ projectId, initialTab = "documents" }: Props) {
 
     async function handleDeleteReviewRow(review: TabularReview) {
         if (user?.id && review.user_id !== user.id) {
-            setOwnerOnlyAction("delete this tabular review");
+            setOwnerOnlyAction(t("ownerOnly.deleteReview"));
             return;
         }
         await deleteTabularReview(review.id);
@@ -786,7 +789,7 @@ export function ProjectPage({ projectId, initialTab = "documents" }: Props) {
                         <input
                             autoFocus
                             className="flex-1 min-w-0 text-sm text-gray-800 bg-transparent outline-none border-b border-gray-300"
-                            placeholder="Folder name"
+                            placeholder={t("folderPlaceholder")}
                             value={newFolderName}
                             onChange={(e) => setNewFolderName(e.target.value)}
                             onKeyDown={(e) => {
@@ -835,10 +838,10 @@ export function ProjectPage({ projectId, initialTab = "documents" }: Props) {
                     </div>
                 </div>
                 <div className="ml-auto w-20 shrink-0 text-xs text-gray-300 uppercase truncate">
-                    {filename.includes(".") ? filename.split(".").pop() : "file"}
+                    {filename.includes(".") ? filename.split(".").pop() : t("fileFallback")}
                 </div>
                 <div className="w-24 shrink-0 text-sm text-gray-300">
-                    Uploading
+                    {t("uploading")}
                 </div>
                 <div className="w-20 shrink-0 text-sm text-gray-300">—</div>
                 <div className="w-32 shrink-0 text-sm text-gray-300">—</div>
@@ -1003,7 +1006,7 @@ export function ProjectPage({ projectId, initialTab = "documents" }: Props) {
                                                 setRenameDocumentValue(doc.filename);
                                                 setRenamingDocumentId(doc.id);
                                             }}
-                                            renameLabel="Rename document"
+                                            renameLabel={t("renameDocument")}
                                             onDownload={() => downloadDoc(doc.id)}
                                             onShowAllVersions={
                                                 hasVersions && !isVersionsOpen
@@ -1154,7 +1157,7 @@ export function ProjectPage({ projectId, initialTab = "documents" }: Props) {
     if (!project) {
         return (
             <div className="flex h-full items-center justify-center">
-                <p className="text-gray-400">Project not found</p>
+                <p className="text-gray-400">{t("notFound")}</p>
             </div>
         );
     }
@@ -1188,7 +1191,7 @@ export function ProjectPage({ projectId, initialTab = "documents" }: Props) {
                 onClick={() => setActionsOpen((v) => !v)}
                 className="flex items-center gap-1 text-xs font-medium text-gray-700 hover:text-gray-900 transition-colors"
             >
-                Actions
+                {t("actions")}
                 <ChevronDown className="h-3.5 w-3.5" />
             </button>
             {actionsOpen && (
@@ -1198,7 +1201,7 @@ export function ProjectPage({ projectId, initialTab = "documents" }: Props) {
                             onClick={handleDownloadSelectedDocs}
                             className="w-full px-3 py-1.5 text-left text-xs text-gray-600 hover:bg-gray-50 transition-colors"
                         >
-                            Download
+                            {tc("actions.download")}
                         </button>
                     )}
                     {tab === "documents" && selectedDocIds.some((id) => docs.find((d) => d.id === id)?.folder_id != null) && (
@@ -1206,14 +1209,14 @@ export function ProjectPage({ projectId, initialTab = "documents" }: Props) {
                             onClick={handleRemoveSelectedFromFolder}
                             className="w-full px-3 py-1.5 text-left text-xs text-gray-600 hover:bg-gray-50 transition-colors"
                         >
-                            Remove from subfolder
+                            {t("removeFromSubfolder")}
                         </button>
                     )}
                     <button
                         onClick={handleDeleteSelected}
                         className="w-full px-3 py-1.5 text-left text-xs text-red-600 hover:bg-red-50 transition-colors"
                     >
-                        Delete
+                        {tc("actions.delete")}
                     </button>
                 </div>
             )}
@@ -1230,14 +1233,14 @@ export function ProjectPage({ projectId, initialTab = "documents" }: Props) {
                         className="flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors"
                     >
                         <FolderPlus className="h-3.5 w-3.5" />
-                        Add Subfolder
+                        {t("addSubfolder")}
                     </button>
                     <button
                         onClick={() => setAddDocsOpen(true)}
                         className="flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors"
                     >
                         <Upload className="h-3.5 w-3.5" />
-                        Add Documents
+                        {t("documents.add")}
                     </button>
                 </>
             )}
@@ -1264,9 +1267,9 @@ export function ProjectPage({ projectId, initialTab = "documents" }: Props) {
 
             <ToolbarTabs
                 tabs={[
-                    { id: "documents", label: "Documents" },
-                    { id: "assistant", label: "Assistant" },
-                    { id: "reviews", label: "Tabular Reviews" },
+                    { id: "documents", label: t("tabs.documents") },
+                    { id: "assistant", label: t("tabs.assistant") },
+                    { id: "reviews", label: tc("nav.tabularReviews") },
                 ]}
                 active={tab}
                 onChange={handleTabChange}
@@ -1299,13 +1302,13 @@ export function ProjectPage({ projectId, initialTab = "documents" }: Props) {
                                 />
                             </div>
                             <div className={`sticky left-8 z-[60] ${DOC_NAME_COL_W} bg-white pl-2 text-left`}>
-                                Name
+                                {t("tableHeaders.name")}
                             </div>
-                            <div className="ml-auto w-20 shrink-0 text-left">Type</div>
-                            <div className="w-24 shrink-0 text-left">Size</div>
-                            <div className="w-20 shrink-0 text-left">Version</div>
-                            <div className="w-32 shrink-0 text-left">Created</div>
-                            <div className="w-32 shrink-0 text-left">Updated</div>
+                            <div className="ml-auto w-20 shrink-0 text-left">{t("tableHeaders.type")}</div>
+                            <div className="w-24 shrink-0 text-left">{t("tableHeaders.size")}</div>
+                            <div className="w-20 shrink-0 text-left">{t("tableHeaders.version")}</div>
+                            <div className="w-32 shrink-0 text-left">{t("tableHeaders.created")}</div>
+                            <div className="w-32 shrink-0 text-left">{t("tableHeaders.updated")}</div>
                             <div className="w-8 shrink-0" />
                         </div>
 
@@ -1351,7 +1354,7 @@ export function ProjectPage({ projectId, initialTab = "documents" }: Props) {
                                 className="flex-1 flex cursor-pointer flex-col items-center justify-center py-24 text-center"
                             >
                                 <Upload className="h-8 w-8 text-gray-200 mb-3" />
-                                <p className="text-sm text-gray-400">Drop PDF or DOCX files here</p>
+                                <p className="text-sm text-gray-400">{t("dropFiles")}</p>
                             </div>
                         ) : (
                             <div
@@ -1494,7 +1497,7 @@ export function ProjectPage({ projectId, initialTab = "documents" }: Props) {
                                                                     setRenameDocumentValue(doc.filename);
                                                                     setRenamingDocumentId(doc.id);
                                                                 }}
-                                                                renameLabel="Rename document"
+                                                                renameLabel={t("renameDocument")}
                                                                 onDownload={() => downloadDoc(doc.id)}
                                                                 onShowAllVersions={
                                                                     hasVersions && !isVersionsOpen
@@ -1568,7 +1571,7 @@ export function ProjectPage({ projectId, initialTab = "documents" }: Props) {
                                                         menuDoc.id,
                                                     );
                                                 }}
-                                                renameLabel="Rename document"
+                                                renameLabel={t("renameDocument")}
                                                 onDownload={() => downloadDoc(menuDoc.id)}
                                                 onShowAllVersions={
                                                     menuDocHasVersions && !menuDocVersionsOpen
@@ -1610,8 +1613,8 @@ export function ProjectPage({ projectId, initialTab = "documents" }: Props) {
                                                 }}
                                                 newSubfolderLabel={
                                                     contextMenu.showFolderActions
-                                                        ? "New subfolder inside"
-                                                        : "New subfolder"
+                                                        ? t("newSubfolderInside")
+                                                        : t("newSubfolder")
                                                 }
                                                 onRename={
                                                     contextMenu.showFolderActions &&
@@ -1632,7 +1635,7 @@ export function ProjectPage({ projectId, initialTab = "documents" }: Props) {
                                                           }
                                                         : undefined
                                                 }
-                                                renameLabel="Rename folder"
+                                                renameLabel={t("renameFolder")}
                                                 onDelete={
                                                     contextMenu.showFolderActions &&
                                                     contextMenu.folderId
@@ -1642,7 +1645,7 @@ export function ProjectPage({ projectId, initialTab = "documents" }: Props) {
                                                               )
                                                         : undefined
                                                 }
-                                                deleteLabel="Delete folder"
+                                                deleteLabel={t("deleteFolder")}
                                             />
                                         )}
                                     </div>
@@ -1713,7 +1716,7 @@ export function ProjectPage({ projectId, initialTab = "documents" }: Props) {
                 open={addDocsOpen}
                 onClose={() => setAddDocsOpen(false)}
                 onSelect={handleDocsSelected}
-                breadcrumb={["Projects", project.name + (project.cm_number ? ` (${project.cm_number})` : ""), "Add Documents"]}
+                breadcrumb={[tc("nav.projects"), project.name + (project.cm_number ? ` (${project.cm_number})` : ""), t("documents.add")]}
                 projectId={projectId}
             />
 
@@ -1759,12 +1762,12 @@ export function ProjectPage({ projectId, initialTab = "documents" }: Props) {
                 fetchPeople={getProjectPeople}
                 currentUserEmail={user?.email ?? null}
                 breadcrumb={[
-                    "Projects",
+                    tc("nav.projects"),
                     project
                         ? project.name +
                           (project.cm_number ? ` (${project.cm_number})` : "")
                         : "",
-                    "People",
+                    tc("nav.people"),
                 ]}
                 // Only owners may modify the member list. Without this prop
                 // PeopleModal renders read-only — non-owners can still see

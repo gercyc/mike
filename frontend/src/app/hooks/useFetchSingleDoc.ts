@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { getAuthToken } from "@/lib/authToken";
 
 /**
  * /display returns either PDF bytes (when the active version has a PDF
@@ -12,6 +12,8 @@ import { supabase } from "@/lib/supabase";
 export type DocResult =
     | { type: "pdf"; buffer: ArrayBuffer }
     | { type: "docx" }
+    | { type: "plaintext"; text: string }
+    | { type: "html"; text: string }
     | null;
 
 export function useFetchSingleDoc(
@@ -37,10 +39,7 @@ export function useFetchSingleDoc(
 
         (async () => {
             try {
-                const {
-                    data: { session },
-                } = await supabase.auth.getSession();
-                const token = session?.access_token;
+                const token = getAuthToken();
                 if (cancelled) return;
 
                 const apiBase =
@@ -65,6 +64,12 @@ export function useFetchSingleDoc(
                 if (contentType.includes("application/pdf")) {
                     const buffer = await response.arrayBuffer();
                     if (!cancelled) setResult({ type: "pdf", buffer });
+                } else if (contentType.includes("text/html")) {
+                    const text = await response.text();
+                    if (!cancelled) setResult({ type: "html", text });
+                } else if (contentType.includes("text/plain")) {
+                    const text = await response.text();
+                    if (!cancelled) setResult({ type: "plaintext", text });
                 } else {
                     // Drain the body so the connection is reusable, but the
                     // bytes are useless to the PDF viewer — the caller will

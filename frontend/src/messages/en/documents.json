@@ -1,0 +1,30 @@
+{
+  "title": "Documents",
+  "searchPlaceholder": "Search documents…",
+  "uploadDocument": "Upload document",
+  "tableHeaders": {
+    "name": "Name",
+    "type": "Type",
+    "size": "Size",
+    "pages": "Pages",
+    "status": "Status",
+    "created": "Created"
+  },
+  "status": {
+    "ready": "Ready",
+    "pending": "Pending",
+    "processing": "Processing",
+    "error": "Error"
+  },
+  "empty": {
+    "title": "No documents yet",
+    "description": "Upload documents to analyse them with the assistant or use them in tabular reviews.",
+    "upload": "Upload document"
+  },
+  "noDocumentsFound": "No documents match your search.",
+  "actions": "Actions",
+  "deleteSelected": "Delete selected",
+  "confirmDelete": "Delete {count, plural, one {# document} other {# documents}}?",
+  "downloadZip": "Download as ZIP",
+  "viewDocument": "View document"
+}

@@ -1,0 +1,76 @@
+{
+  "title": "Projects",
+  "newProject": "New Project",
+  "noProjects": "No projects yet",
+  "notFound": "Project not found",
+  "folderPlaceholder": "Folder name",
+  "fileFallback": "file",
+  "uploading": "Uploading",
+  "dropFiles": "Drop PDF or DOCX files here",
+  "actions": "Actions",
+  "addSubfolder": "Add Subfolder",
+  "removeFromSubfolder": "Remove from subfolder",
+  "renameDocument": "Rename document",
+  "renameFolder": "Rename folder",
+  "deleteFolder": "Delete folder",
+  "newSubfolder": "New subfolder",
+  "newSubfolderInside": "New subfolder inside",
+  "downloadZipName": "documents.zip",
+  "searchPlaceholder": "Search projects…",
+  "tabs": {
+    "all": "All",
+    "mine": "Mine",
+    "sharedWithMe": "Shared with me",
+    "assistant": "Assistant",
+    "reviews": "Reviews",
+    "documents": "Documents"
+  },
+  "tableHeaders": {
+    "name": "Name",
+    "type": "Type",
+    "size": "Size",
+    "version": "Version",
+    "created": "Created",
+    "updated": "Updated",
+    "cm": "CM",
+    "files": "Files",
+    "chats": "Chats",
+    "reviews": "Tabular Reviews"
+  },
+  "loadError": "Could not load projects.",
+  "empty": {
+    "title": "Projects",
+    "description": "Upload documents into projects and to commence chats and tabular reviews with them.",
+    "createNew": "Create New"
+  },
+  "noSharedProjects": "No shared projects",
+  "cmPlaceholder": "CM #",
+  "ownerOnly": {
+    "deleteDocument": "delete this document",
+    "deleteChat": "delete this chat",
+    "deleteReview": "delete this tabular review",
+    "renameProject": "rename this project",
+    "renameChat": "rename this chat",
+    "renameReview": "rename this tabular review",
+    "deleteSelectedDocuments": "delete {blocked} of the selected documents — only the document creator can delete a document",
+    "deleteSelectedChats": "delete {blocked} of the selected chats — only the chat creator can delete a chat",
+    "deleteSelectedReviews": "delete {blocked} of the selected reviews — only the review creator can delete a review",
+    "deleteSelectedProjects": "delete {blocked} of the selected projects — only the project owner can delete a project"
+  },
+  "modal": {
+    "create": "Create Project",
+    "name": "Project name",
+    "namePlaceholder": "Enter project name",
+    "description": "Description",
+    "descriptionPlaceholder": "Optional description"
+  },
+  "documents": {
+    "add": "Add Documents",
+    "noDocuments": "No documents in this project"
+  },
+  "people": {
+    "manage": "Manage People",
+    "invite": "Invite",
+    "email": "Email address"
+  }
+}

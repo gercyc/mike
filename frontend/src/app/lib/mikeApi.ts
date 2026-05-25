@@ -3,7 +3,7 @@
  * Attaches the Supabase auth token for user authentication.
  */
 
-import { supabase } from "@/lib/supabase";
+import { getAuthToken } from "@/lib/authToken";
 import type {
     AssistantEvent,
     MikeChat,
@@ -16,6 +16,7 @@ import type {
     MikeWorkflow,
     TabularReview,
     TabularReviewDetailOut,
+    WorkflowAsset,
 } from "@/app/components/shared/types";
 
 // Server-side shape before mapping
@@ -37,16 +38,14 @@ interface ServerChatDetailOut {
 const API_BASE =
     process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
 
-async function getAuthHeader(): Promise<Record<string, string>> {
-    const {
-        data: { session },
-    } = await supabase.auth.getSession();
-    if (!session?.access_token) return {};
-    return { Authorization: `Bearer ${session.access_token}` };
+function getAuthHeader(): Record<string, string> {
+    const token = getAuthToken();
+    if (!token) return {};
+    return { Authorization: `Bearer ${token}` };
 }
 
 async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
-    const authHeaders = await getAuthHeader();
+    const authHeaders = getAuthHeader();
     const { headers: initHeaders, ...restInit } = init ?? {};
     const response = await fetch(`${API_BASE}${path}`, {
         cache: "no-store",
@@ -124,7 +123,7 @@ export async function updateUserProfile(payload: {
     });
 }
 
-export type ApiKeyProvider = "claude" | "gemini" | "openai";
+export type ApiKeyProvider = "claude" | "gemini" | "openai" | "openrouter" | "deepseek";
 export type ApiKeySource = "user" | "env" | null;
 export type ApiKeyState = Record<
     ApiKeyProvider,
@@ -151,6 +150,24 @@ export async function saveApiKey(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ api_key: apiKey }),
     });
+}
+
+export interface OpenRouterModel {
+    id: string;
+    name: string;
+    description?: string;
+    context_length?: number;
+    pricing?: {
+        prompt: string;
+        completion: string;
+    };
+}
+
+export async function listOpenRouterModels(): Promise<OpenRouterModel[]> {
+    const result = await apiRequest<{ data: OpenRouterModel[] }>(
+        "/user/openrouter-models",
+    );
+    return result.data ?? [];
 }
 
 export async function getProject(projectId: string): Promise<MikeProject> {
@@ -313,7 +330,7 @@ export async function uploadDocumentVersion(
     file: File,
     displayName?: string,
 ): Promise<MikeDocumentVersion> {
-    const authHeaders = await getAuthHeader();
+    const authHeaders = getAuthHeader();
     const form = new FormData();
     form.append("file", file);
     if (displayName) form.append("display_name", displayName);
@@ -348,7 +365,7 @@ export async function uploadProjectDocument(
     projectId: string,
     file: File,
 ): Promise<MikeDocument> {
-    const authHeaders = await getAuthHeader();
+    const authHeaders = getAuthHeader();
     const form = new FormData();
     form.append("file", file);
     const response = await fetch(
@@ -366,7 +383,7 @@ export async function uploadProjectDocument(
 export async function uploadStandaloneDocument(
     file: File,
 ): Promise<MikeDocument> {
-    const authHeaders = await getAuthHeader();
+    const authHeaders = getAuthHeader();
     const form = new FormData();
     form.append("file", file);
     const response = await fetch(`${API_BASE}/single-documents`, {
@@ -397,7 +414,7 @@ export async function getDocumentUrl(
 export async function downloadDocumentsZip(
     documentIds: string[],
 ): Promise<Blob> {
-    const authHeaders = await getAuthHeader();
+    const authHeaders = getAuthHeader();
     const response = await fetch(`${API_BASE}/single-documents/download-zip`, {
         method: "POST",
         cache: "no-store",
@@ -503,7 +520,7 @@ export async function streamChat(payload: {
     signal?: AbortSignal;
 }): Promise<Response> {
     const { signal, ...body } = payload;
-    const authHeaders = await getAuthHeader();
+    const authHeaders = getAuthHeader();
     return fetch(`${API_BASE}/chat`, {
         method: "POST",
         headers: {
@@ -533,7 +550,7 @@ export async function streamProjectChat(payload: {
     signal?: AbortSignal;
 }): Promise<Response> {
     const { projectId, signal, ...body } = payload;
-    const authHeaders = await getAuthHeader();
+    const authHeaders = getAuthHeader();
     return fetch(`${API_BASE}/projects/${projectId}/chat`, {
         method: "POST",
         headers: {
@@ -602,7 +619,7 @@ export async function getTabularReviewPeople(
 
 export async function generateTabularColumnPrompt(
     title: string,
-    options?: { format?: string; documentName?: string; tags?: string[] },
+    options?: { format?: string; documentName?: string; tags?: string[]; locale?: string },
 ): Promise<{ prompt: string; source: "preset" | "llm" | "fallback" }> {
     return apiRequest<{
         prompt: string;
@@ -615,6 +632,7 @@ export async function generateTabularColumnPrompt(
             format: options?.format,
             documentName: options?.documentName,
             tags: options?.tags,
+            locale: options?.locale,
         }),
     });
 }
@@ -647,7 +665,7 @@ export async function deleteTabularReview(reviewId: string): Promise<void> {
 export async function streamTabularGeneration(
     reviewId: string,
 ): Promise<Response> {
-    const authHeaders = await getAuthHeader();
+    const authHeaders = getAuthHeader();
     return fetch(`${API_BASE}/tabular-review/${reviewId}/generate`, {
         method: "POST",
         headers: { ...authHeaders },
@@ -661,7 +679,7 @@ export async function streamTabularChat(
     signal?: AbortSignal,
     context?: { reviewTitle?: string | null; projectName?: string | null },
 ): Promise<Response> {
-    const authHeaders = await getAuthHeader();
+    const authHeaders = getAuthHeader();
     return fetch(`${API_BASE}/tabular-review/${reviewId}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeaders },
@@ -880,4 +898,63 @@ export async function deleteWorkflowShare(
     await apiRequest(`/workflows/${workflowId}/shares/${shareId}`, {
         method: "DELETE",
     });
+}
+
+// ---------------------------------------------------------------------------
+// Workflow Assets
+// ---------------------------------------------------------------------------
+
+export async function listWorkflowAssets(workflowId: string): Promise<WorkflowAsset[]> {
+    return apiRequest<WorkflowAsset[]>(`/workflows/${workflowId}/assets`);
+}
+
+export async function createWorkflowAsset(
+    workflowId: string,
+    payload: { name: string; type: "html" | "text"; content?: string },
+): Promise<WorkflowAsset> {
+    return apiRequest<WorkflowAsset>(`/workflows/${workflowId}/assets`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+    });
+}
+
+export async function uploadWorkflowAsset(
+    workflowId: string,
+    file: File,
+    name?: string,
+): Promise<WorkflowAsset> {
+    const form = new FormData();
+    form.append("file", file);
+    if (name) form.append("name", name);
+    return apiRequest<WorkflowAsset>(`/workflows/${workflowId}/assets/upload`, {
+        method: "POST",
+        body: form,
+    });
+}
+
+export async function updateWorkflowAsset(
+    workflowId: string,
+    assetId: string,
+    payload: { name?: string; content?: string },
+): Promise<WorkflowAsset> {
+    return apiRequest<WorkflowAsset>(`/workflows/${workflowId}/assets/${assetId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+    });
+}
+
+export async function deleteWorkflowAsset(workflowId: string, assetId: string): Promise<void> {
+    await apiRequest(`/workflows/${workflowId}/assets/${assetId}`, { method: "DELETE" });
+}
+
+export async function getWorkflowAssetDownloadUrl(
+    workflowId: string,
+    assetId: string,
+): Promise<string> {
+    const result = await apiRequest<{ url: string }>(
+        `/workflows/${workflowId}/assets/${assetId}/download`,
+    );
+    return result.url;
 }

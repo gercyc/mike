@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useRef, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import remarkGfm from "remark-gfm";
@@ -16,22 +17,11 @@ import type {
 } from "../shared/types";
 import { EditCard, applyOptimisticResolution } from "./EditCard";
 import { PreResponseWrapper } from "../shared/PreResponseWrapper";
-import { supabase } from "@/lib/supabase";
-
-function toolCallLabel(name: string): string {
-    if (name === "generate_docx") return "Creating document...";
-    if (name === "edit_document") return "Editing document...";
-    if (name === "read_document") return "Reading document...";
-    if (name === "fetch_documents") return "Reading documents...";
-    if (name === "find_in_document") return "Searching document...";
-    if (name === "replicate_document") return "Copying document...";
-    if (name === "read_workflow") return "Loading workflow...";
-    if (name === "list_workflows") return "Loading workflows...";
-    if (name === "list_documents") return "Loading documents...";
-    return name ? `Running ${name}...` : "Working...";
-}
+import { getAuthToken } from "@/lib/authToken";
 
 /**
+ * Tool-call label map — resolved via translation keys at render time.
+ *
  * Card rendered above the per-edit EditCards when a message produced
  * multiple tracked-change proposals. Lets the user resolve every pending
  * edit in one click by firing the per-edit accept/reject endpoint for each
@@ -75,6 +65,7 @@ function BulkEditActions({
         message: string;
     }) => void;
 }) {
+    const t = useTranslations("assistant");
     const [busy, setBusy] = useState<"accept" | "reject" | null>(null);
     const [progress, setProgress] = useState<{
         done: number;
@@ -88,10 +79,7 @@ function BulkEditActions({
         setBusy(verb);
         setProgress({ done: 0, total: pending.length });
         try {
-            const {
-                data: { session },
-            } = await supabase.auth.getSession();
-            const token = session?.access_token;
+            const token = getAuthToken();
             const apiBase =
                 process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
 
@@ -158,8 +146,8 @@ function BulkEditActions({
                         versionId: annotation.version_id ?? null,
                         message:
                             verb === "accept"
-                                ? "Couldn't save one or more accepts."
-                                : "Couldn't save one or more rejects.",
+                                ? t("editCard.bulkAcceptError")
+                                : t("editCard.bulkRejectError"),
                     });
                 }
                 done++;
@@ -185,7 +173,7 @@ function BulkEditActions({
                 {busy === "accept" && (
                     <Loader2 className="h-3 w-3 animate-spin" />
                 )}
-                Accept all
+                {t("editCard.acceptAll")}
             </button>
             <button
                 onClick={() => handleAll("reject")}
@@ -195,7 +183,7 @@ function BulkEditActions({
                 {busy === "reject" && (
                     <Loader2 className="h-3 w-3 animate-spin" />
                 )}
-                Reject all
+                {t("editCard.rejectAll")}
             </button>
             {progress && (
                 <span className="text-xs font-serif text-gray-500">
@@ -210,7 +198,7 @@ function BulkEditActions({
                     disabled={!!busy}
                     className="ml-auto px-2 py-1 text-xs rounded border border-gray-200 bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-50"
                 >
-                    View
+                {t("editCard.view")}
                 </button>
             )}
         </div>
@@ -259,6 +247,7 @@ function EditCardsSection({
         message: string;
     }) => void;
 }) {
+    const t = useTranslations("assistant");
     const [isOpen, setIsOpen] = useState(true);
     if (cards.length === 0) return null;
 
@@ -266,11 +255,11 @@ function EditCardsSection({
     const summary =
         pending.length > 0
             ? docCount > 1
-                ? `${pending.length} tracked changes across ${docCount} documents`
-                : `${pending.length} tracked ${pending.length === 1 ? "change" : "changes"}`
+                ? t("editCard.pendingTrackedChangesAcrossDocs", { count: pending.length, docCount })
+                : t("editCard.pendingTrackedChanges", { count: pending.length })
             : docCount > 1
-              ? `${resolvedCount} resolved tracked changes across ${docCount} documents`
-              : `${resolvedCount} resolved tracked ${resolvedCount === 1 ? "change" : "changes"}`;
+              ? t("editCard.resolvedTrackedChangesAcrossDocs", { count: resolvedCount, docCount })
+              : t("editCard.resolvedTrackedChanges", { count: resolvedCount });
 
     return (
         <div className="border border-gray-200 rounded-lg bg-white overflow-hidden">
@@ -281,7 +270,7 @@ function EditCardsSection({
                 </p>
                 <button
                     onClick={() => setIsOpen((v) => !v)}
-                    aria-label={isOpen ? "Collapse edits" : "Expand edits"}
+                    aria-label={isOpen ? t("editCard.collapseEdits") : t("editCard.expandEdits")}
                     className="shrink-0 rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition-colors"
                 >
                     <ChevronDown
@@ -357,14 +346,6 @@ function ResponseStatus({ status }: { status: StatusState }) {
 // Event block components
 // ---------------------------------------------------------------------------
 
-const THINKING_PHRASES = [
-    "Thinking...",
-    "Pondering...",
-    "Analyzing...",
-    "Reviewing...",
-    "Reasoning...",
-];
-
 function ReasoningBlock({
     text,
     isStreaming,
@@ -374,13 +355,15 @@ function ReasoningBlock({
     isStreaming: boolean;
     showConnector?: boolean;
 }) {
+    const t = useTranslations("assistant");
     const [isOpen, setIsOpen] = useState(false);
+    const thinkingPhrases = t.raw("message.thinkingPhrases") as string[];
     const [thinkingIndex, setThinkingIndex] = useState(0);
 
     useEffect(() => {
         if (!isStreaming) return;
         const interval = setInterval(() => {
-            setThinkingIndex((i) => (i + 1) % THINKING_PHRASES.length);
+            setThinkingIndex((i) => (i + 1) % thinkingPhrases.length);
         }, 2000);
         return () => clearInterval(interval);
     }, [isStreaming]);
@@ -403,8 +386,8 @@ function ReasoningBlock({
                 )}
                 <span className="font-medium ml-2">
                     {isStreaming
-                        ? THINKING_PHRASES[thinkingIndex]
-                        : "Thought process"}
+                        ? thinkingPhrases[thinkingIndex]
+                        : t("message.thoughtProcess")}
                 </span>
                 {!isStreaming && (
                     <ChevronDown
@@ -445,6 +428,7 @@ function DocReadBlock({
     showConnector?: boolean;
     isStreaming?: boolean;
 }) {
+    const t = useTranslations("assistant");
     return (
         <div className="flex items-start text-sm font-serif text-gray-500 relative">
             {showConnector && (
@@ -457,7 +441,7 @@ function DocReadBlock({
             )}
             <div className="ml-2 min-w-0 flex-1 whitespace-normal break-words">
                 <span className="font-medium">
-                    {isStreaming ? "Reading" : "Read"}
+                    {isStreaming ? t("message.reading") : t("message.read")}
                 </span>{" "}
                 {isStreaming ? (
                     <span>{filename}...</span>
@@ -489,10 +473,11 @@ function DocFindBlock({
     isStreaming?: boolean;
     showConnector?: boolean;
 }) {
-    const label = isStreaming ? "Finding" : "Found";
+    const t = useTranslations("assistant");
+    const label = isStreaming ? t("message.finding") : t("message.found");
     const matchSuffix = isStreaming
         ? ""
-        : ` (${totalMatches} ${totalMatches === 1 ? "match" : "matches"})`;
+        : ` ${t("message.matchCount", { count: totalMatches })}`;
     return (
         <div className="flex items-start text-sm font-serif text-gray-500 relative">
             {showConnector && (
@@ -509,7 +494,7 @@ function DocFindBlock({
                 <span className="font-medium">{label}</span>{" "}
                 <span>
                     &ldquo;{query}&rdquo;{matchSuffix}
-                    <span className="ml-1 text-gray-400">in {filename}</span>
+                    <span className="ml-1 text-gray-400">{t("message.inFilename", { filename })}</span>
                     {isStreaming && "..."}
                 </span>
             </div>
@@ -526,6 +511,7 @@ function DocCreatedBlock({
     showConnector?: boolean;
     isStreaming?: boolean;
 }) {
+    const t = useTranslations("assistant");
     return (
         <div className="flex items-start text-sm font-serif text-gray-500 relative">
             {showConnector && (
@@ -538,7 +524,7 @@ function DocCreatedBlock({
             )}
             <div className="ml-2 min-w-0 flex-1 whitespace-normal break-words">
                 <span className="font-medium">
-                    {isStreaming ? "Creating" : "Created"}
+                    {isStreaming ? t("message.creating") : t("message.created")}
                 </span>{" "}
                 <span>{isStreaming ? `${filename}...` : filename}</span>
             </div>
@@ -563,9 +549,10 @@ function DocReplicatedBlock({
     isStreaming?: boolean;
     hasError?: boolean;
 }) {
-    const label = isStreaming ? "Replicating" : "Replicated";
+    const t = useTranslations("assistant");
+    const label = isStreaming ? t("message.replicating") : t("message.replicated");
     const suffix =
-        !isStreaming && count > 1 ? ` ${count} times` : isStreaming ? "..." : "";
+        !isStreaming && count > 1 ? ` ${t("message.times", { count })}` : isStreaming ? "..." : "";
     return (
         <div className="flex items-start text-sm font-serif text-gray-500 relative">
             {showConnector && (
@@ -633,10 +620,7 @@ function DocDownloadBlock({
         if (busy || isReloading || !href) return;
         setBusy(true);
         try {
-            const {
-                data: { session },
-            } = await supabase.auth.getSession();
-            const token = session?.access_token;
+            const token = getAuthToken();
             const resp = await fetch(href, {
                 headers: token ? { Authorization: `Bearer ${token}` } : {},
             });
@@ -739,6 +723,7 @@ function WorkflowAppliedBlock({
     showConnector?: boolean;
     onClick?: () => void;
 }) {
+    const t = useTranslations("assistant");
     return (
         <div className="flex items-start text-sm font-serif text-gray-500 relative">
             {showConnector && (
@@ -746,7 +731,7 @@ function WorkflowAppliedBlock({
             )}
             <div className="mt-2 w-1.5 h-1.5 rounded-full bg-green-400 shrink-0" />
             <div className="ml-2 min-w-0 flex-1 whitespace-normal break-words">
-                <span className="font-medium">Applied Workflow</span>{" "}
+                <span className="font-medium">{t("message.appliedWorkflow")}</span>{" "}
                 {onClick ? (
                     <button
                         onClick={onClick}
@@ -773,6 +758,7 @@ function DocEditedBlock({
     isStreaming?: boolean;
     hasError?: boolean;
 }) {
+    const t = useTranslations("assistant");
     return (
         <div className="flex items-start text-sm font-serif text-gray-500 relative">
             {showConnector && (
@@ -788,10 +774,10 @@ function DocEditedBlock({
             <div className="ml-2 min-w-0 flex-1 whitespace-normal break-words">
                 <span className="font-medium">
                     {isStreaming
-                        ? "Editing"
+                        ? t("message.editing")
                         : hasError
-                          ? "Edit failed"
-                          : "Edited"}
+                          ? t("message.editFailed")
+                          : t("message.edited")}
                 </span>{" "}
                 <span>{isStreaming ? `${filename}...` : filename}</span>
             </div>
@@ -1086,6 +1072,7 @@ export function AssistantMessage({
     isEditReloading,
     resolvedEditStatuses,
 }: Props) {
+    const t = useTranslations("assistant");
     const messageKey = useId();
     const contentDivRef = useRef<HTMLDivElement | null>(null);
     const [isCopied, setIsCopied] = useState(false);
@@ -1241,6 +1228,18 @@ export function AssistantMessage({
             );
         }
         if (event.type === "tool_call_start") {
+            const toolLabels: Record<string, string> = {
+                generate_docx: t("toolCall.generateDocx"),
+                edit_document: t("toolCall.editDocument"),
+                read_document: t("toolCall.readDocument"),
+                fetch_documents: t("toolCall.readDocuments"),
+                find_in_document: t("toolCall.findInDocument"),
+                replicate_document: t("toolCall.replicateDocument"),
+                read_workflow: t("toolCall.readWorkflow"),
+                list_workflows: t("toolCall.listWorkflows"),
+                list_documents: t("toolCall.listDocuments"),
+            };
+            const label = toolLabels[event.name] ?? (event.name ? t("toolCall.running", { name: event.name }) : t("toolCall.working"));
             return (
                 <div
                     key={globalIdx}
@@ -1251,7 +1250,7 @@ export function AssistantMessage({
                     )}
                     <div className="w-1.5 h-1.5 rounded-full border border-gray-400 border-t-transparent animate-spin shrink-0" />
                     <span className="font-medium ml-2">
-                        {toolCallLabel(event.name)}
+                        {label}
                     </span>
                 </div>
             );
@@ -1497,7 +1496,7 @@ export function AssistantMessage({
                 {isError && (
                     <div className="mt-2 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-serif text-red-700">
                         <span className="leading-snug">
-                            {errorMessage ?? "Sorry, something went wrong."}
+                            {errorMessage ?? t("message.errorDefault")}
                         </span>
                     </div>
                 )}

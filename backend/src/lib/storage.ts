@@ -1,12 +1,21 @@
 /**
- * Cloudflare R2 storage utilities for Mike document management.
- * R2 is S3-compatible — uses @aws-sdk/client-s3.
+ * Storage utilities for Mike document management.
+ * Supports multiple S3-compatible backends via STORAGE_PROVIDER env var.
  *
- * Required env vars:
- *   R2_ENDPOINT_URL     — https://<account-id>.r2.cloudflarestorage.com
- *   R2_ACCESS_KEY_ID    — R2 API token (Access Key ID)
- *   R2_SECRET_ACCESS_KEY — R2 API token (Secret Access Key)
- *   R2_BUCKET_NAME      — bucket name (default: "mike")
+ * STORAGE_PROVIDER = "r2" (default) | "minio"
+ *
+ * Cloudflare R2 env vars:
+ *   R2_ENDPOINT_URL       — https://<account-id>.r2.cloudflarestorage.com
+ *   R2_ACCESS_KEY_ID      — R2 API token (Access Key ID)
+ *   R2_SECRET_ACCESS_KEY  — R2 API token (Secret Access Key)
+ *   R2_BUCKET_NAME        — bucket name (default: "mike")
+ *
+ * MinIO env vars:
+ *   MINIO_ENDPOINT_URL    — http(s)://<host>:<port>
+ *   MINIO_ACCESS_KEY_ID   — MinIO access key
+ *   MINIO_SECRET_ACCESS_KEY — MinIO secret key
+ *   MINIO_BUCKET_NAME     — bucket name (default: "mike")
+ *   MINIO_REGION          — region (default: "us-east-1")
  */
 
 import {
@@ -17,33 +26,79 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl as awsGetSignedUrl } from "@aws-sdk/s3-request-presigner";
 
+type StorageProvider = "r2" | "minio";
+
+function getProvider(): StorageProvider {
+  const val = (process.env.STORAGE_PROVIDER ?? "r2").toLowerCase();
+  if (val === "minio") return "minio";
+  return "r2";
+}
+
+function isR2Configured(): boolean {
+  return Boolean(
+    process.env.R2_ENDPOINT_URL &&
+    process.env.R2_ACCESS_KEY_ID &&
+    process.env.R2_SECRET_ACCESS_KEY,
+  );
+}
+
+function isMinioConfigured(): boolean {
+  return Boolean(
+    process.env.MINIO_ENDPOINT_URL &&
+    process.env.MINIO_ACCESS_KEY_ID &&
+    process.env.MINIO_SECRET_ACCESS_KEY,
+  );
+}
+
+export const storageEnabled =
+  getProvider() === "minio" ? isMinioConfigured() : isR2Configured();
+
 let cachedClient: S3Client | undefined;
 
 function getClient(): S3Client {
   if (!cachedClient) {
-    cachedClient = new S3Client({
-      region: "auto",
-      endpoint: process.env.R2_ENDPOINT_URL!,
-      forcePathStyle: true,
-      credentials: {
-        accessKeyId: process.env.R2_ACCESS_KEY_ID!,
-        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
-      },
-    });
+    const provider = getProvider();
+    if (provider === "minio") {
+      cachedClient = new S3Client({
+        region: process.env.MINIO_REGION ?? "us-east-1",
+        endpoint: process.env.MINIO_ENDPOINT_URL!,
+        forcePathStyle: true,
+        credentials: {
+          accessKeyId: process.env.MINIO_ACCESS_KEY_ID!,
+          secretAccessKey: process.env.MINIO_SECRET_ACCESS_KEY!,
+        },
+      });
+    } else {
+      cachedClient = new S3Client({
+        region: "auto",
+        endpoint: process.env.R2_ENDPOINT_URL!,
+        forcePathStyle: true,
+        credentials: {
+          accessKeyId: process.env.R2_ACCESS_KEY_ID!,
+          secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
+        },
+      });
+    }
   }
   return cachedClient;
 }
 
-const BUCKET = process.env.R2_BUCKET_NAME ?? "mike";
-
-export const storageEnabled = Boolean(
-  process.env.R2_ENDPOINT_URL &&
-  process.env.R2_ACCESS_KEY_ID &&
-  process.env.R2_SECRET_ACCESS_KEY,
-);
+function getBucket(): string {
+  const provider = getProvider();
+  if (provider === "minio") {
+    return process.env.MINIO_BUCKET_NAME ?? "mike";
+  }
+  return process.env.R2_BUCKET_NAME ?? "mike";
+}
 
 function requireStorageConfig(): void {
   if (!storageEnabled) {
+    const provider = getProvider();
+    if (provider === "minio") {
+      throw new Error(
+        "MINIO_ENDPOINT_URL, MINIO_ACCESS_KEY_ID, and MINIO_SECRET_ACCESS_KEY must be set",
+      );
+    }
     throw new Error(
       "R2_ENDPOINT_URL, R2_ACCESS_KEY_ID, and R2_SECRET_ACCESS_KEY must be set",
     );
@@ -63,7 +118,7 @@ export async function uploadFile(
   const client = getClient();
   await client.send(
     new PutObjectCommand({
-      Bucket: BUCKET,
+      Bucket: getBucket(),
       Key: key,
       Body: Buffer.from(content),
       ContentType: contentType,
@@ -80,7 +135,7 @@ export async function downloadFile(key: string): Promise<ArrayBuffer | null> {
   try {
     const client = getClient();
     const response = await client.send(
-      new GetObjectCommand({ Bucket: BUCKET, Key: key }),
+      new GetObjectCommand({ Bucket: getBucket(), Key: key }),
     );
     if (!response.Body) return null;
     const bytes = await response.Body.transformToByteArray();
@@ -97,7 +152,7 @@ export async function downloadFile(key: string): Promise<ArrayBuffer | null> {
 export async function deleteFile(key: string): Promise<void> {
   if (!storageEnabled) return;
   const client = getClient();
-  await client.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key }));
+  await client.send(new DeleteObjectCommand({ Bucket: getBucket(), Key: key }));
 }
 
 // ---------------------------------------------------------------------------
@@ -113,14 +168,14 @@ export async function getSignedUrl(
   try {
     const client = getClient();
     // Override the response Content-Disposition so the browser uses this
-    // filename on download, instead of the last path segment of the R2 key
+    // filename on download, instead of the last path segment of the storage key
     // (which includes the document UUID). The `download` attribute on <a>
     // is ignored for cross-origin URLs, so we have to set it server-side.
     const responseContentDisposition = downloadFilename
       ? buildContentDisposition("attachment", downloadFilename)
       : undefined;
     const command = new GetObjectCommand({
-      Bucket: BUCKET,
+      Bucket: getBucket(),
       Key: key,
       ResponseContentDisposition: responseContentDisposition,
     });

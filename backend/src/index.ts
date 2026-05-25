@@ -9,8 +9,11 @@ import { projectChatRouter } from "./routes/projectChat";
 import { documentsRouter } from "./routes/documents";
 import { tabularRouter } from "./routes/tabular";
 import { workflowsRouter } from "./routes/workflows";
+import { workflowAssetsRouter } from "./routes/workflowAssets";
 import { userRouter } from "./routes/user";
 import { downloadsRouter } from "./routes/downloads";
+import { authRouter } from "./routes/auth";
+import { runMigrations } from "./db/migrate";
 
 const app = express();
 const PORT = process.env.PORT ?? 3001;
@@ -109,18 +112,26 @@ app.post("/single-documents", uploadLimiter);
 app.post("/single-documents/:documentId/versions", uploadLimiter);
 app.post("/projects/:projectId/documents", uploadLimiter);
 
+app.use("/auth", authRouter);
 app.use("/chat", chatRouter);
 app.use("/projects", projectsRouter);
 app.use("/projects/:projectId/chat", projectChatRouter);
 app.use("/single-documents", documentsRouter);
 app.use("/tabular-review", tabularRouter);
 app.use("/workflows", workflowsRouter);
+app.use("/workflows/:workflowId/assets", workflowAssetsRouter);
 app.use("/user", userRouter);
 app.use("/users", userRouter);
 app.use("/download", downloadsRouter);
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
-app.listen(PORT, () => {
-  console.log(`Mike backend running on port ${PORT}`);
-});
+async function bootstrap() {
+  await runMigrations();
+
+  app.listen(PORT, () => {
+    console.log(`Mike backend running on port ${PORT}`);
+  });
+}
+
+bootstrap();

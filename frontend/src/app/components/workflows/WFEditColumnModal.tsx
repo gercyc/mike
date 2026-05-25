@@ -5,9 +5,10 @@ import { createPortal } from "react-dom";
 import { ChevronDown, Plus, X } from "lucide-react";
 import type { ColumnConfig, ColumnFormat } from "../shared/types";
 import { generateTabularColumnPrompt } from "@/app/lib/mikeApi";
-import { FORMAT_OPTIONS, formatLabel, formatIcon } from "../tabular/columnFormat";
+import { getFormatOptions, formatLabel, formatIcon } from "../tabular/columnFormat";
 import { TAG_COLORS } from "../tabular/pillUtils";
-import { getPresetConfig, PROMPT_PRESETS } from "../tabular/columnPresets";
+import { getPresetConfig, getPromptPresets } from "../tabular/columnPresets";
+import { useLocale, useTranslations } from "next-intl";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -32,6 +33,8 @@ interface Props {
 }
 
 export function WFEditColumnModal({ column, onClose, onSave, onDelete }: Props) {
+    const t = useTranslations("tabular");
+    const locale = useLocale();
     const [draft, setDraft] = useState<ColumnDraft>({
         name: column.name,
         prompt: column.prompt,
@@ -95,6 +98,7 @@ export function WFEditColumnModal({ column, onClose, onSave, onDelete }: Props) 
             const { prompt } = await generateTabularColumnPrompt(title, {
                 format: draft.format,
                 tags: draft.format === "tag" ? draft.tags : undefined,
+                locale,
             });
             update({ prompt });
         } finally {
@@ -145,7 +149,7 @@ export function WFEditColumnModal({ column, onClose, onSave, onDelete }: Props) 
                                     value={draft.name}
                                     onChange={(e) => {
                                         const name = e.target.value;
-                                        const preset = getPresetConfig(name);
+                                        const preset = getPresetConfig(t, name);
                                         update({
                                             name,
                                             ...(preset ? {
@@ -156,7 +160,7 @@ export function WFEditColumnModal({ column, onClose, onSave, onDelete }: Props) 
                                             } : {}),
                                         });
                                     }}
-                                    placeholder="Column name"
+                                    placeholder={t("column.name")}
                                     className="flex-1 text-2xl font-serif text-gray-800 placeholder-gray-400 focus:outline-none bg-transparent"
                                     autoFocus
                                 />
@@ -175,9 +179,9 @@ export function WFEditColumnModal({ column, onClose, onSave, onDelete }: Props) 
                                             onClick={() => { update({ name: "", prompt: "", format: "text", tags: [], tagInput: "" }); setPresetsOpen(false); }}
                                             className="w-full px-3 py-2 text-left text-sm text-gray-400 hover:bg-gray-50 transition-colors border-b border-gray-100"
                                         >
-                                            No Preset
+                                            {t("presets.noPreset")}
                                         </button>
-                                        {PROMPT_PRESETS.map((preset) => (
+                                        {getPromptPresets(t).map((preset) => (
                                             <button
                                                 key={preset.name}
                                                 type="button"
@@ -203,7 +207,7 @@ export function WFEditColumnModal({ column, onClose, onSave, onDelete }: Props) 
                                     <button className="mt-1 flex items-center justify-between rounded-md border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-700 hover:border-gray-400 focus:outline-none">
                                         <span className="flex items-center gap-2">
                                             <FormatIcon className="h-3.5 w-3.5 text-gray-400" />
-                                            {formatLabel(draft.format)}
+                                            {formatLabel(t, draft.format)}
                                         </span>
                                         <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
                                     </button>
@@ -213,7 +217,7 @@ export function WFEditColumnModal({ column, onClose, onSave, onDelete }: Props) 
                                         value={draft.format}
                                         onValueChange={(v) => update({ format: v as ColumnFormat, tags: [], tagInput: "" })}
                                     >
-                                        {FORMAT_OPTIONS.map((o) => (
+                                        {getFormatOptions(t).map((o) => (
                                             <DropdownMenuRadioItem key={o.value} value={o.value}>
                                                 <o.icon className="h-3.5 w-3.5 text-gray-400" />
                                                 {o.label}

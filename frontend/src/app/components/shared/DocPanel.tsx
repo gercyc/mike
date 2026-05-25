@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Download, Loader2 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { getAuthToken } from "@/lib/authToken";
 import { applyOptimisticResolution } from "../assistant/EditCard";
 import { DocView } from "./DocView";
 import { DocxView } from "./DocxView";
+import { HtmlView } from "./HtmlView";
+import { MdView } from "./MdView";
 import {
     displayCitationQuote,
     expandCitationToEntries,
@@ -17,9 +19,21 @@ import type {
     MikeEditAnnotation,
 } from "./types";
 
+function getFileExt(name: string) {
+    return name.split(".").pop()?.toLowerCase() ?? "";
+}
+
 function isDocxFilename(name: string): boolean {
-    const ext = name.split(".").pop()?.toLowerCase();
+    const ext = getFileExt(name);
     return ext === "docx" || ext === "doc";
+}
+
+function isHtmlFilename(name: string): boolean {
+    return getFileExt(name) === "html";
+}
+
+function isMdFilename(name: string): boolean {
+    return getFileExt(name) === "md";
 }
 
 /**
@@ -98,6 +112,8 @@ export function DocPanel({
     // re-fetch every time they toggle. Tracked-change rendering still
     // only lives in DocxView, which is fine because edits are DOCX-only.
     const useDocxView = isDocxFilename(filename);
+    const useHtmlView = isHtmlFilename(filename);
+    const useMdView = isMdFilename(filename);
 
     const quotes: CitationQuote[] | undefined = useMemo(() => {
         if (mode.kind !== "citation") return undefined;
@@ -162,6 +178,20 @@ export function DocPanel({
                     highlightEdit={highlightEdit}
                     warning={warning ?? null}
                     onWarningDismiss={onWarningDismiss}
+                    initialScrollTop={initialScrollTop ?? null}
+                    onScrollChange={onScrollChange}
+                />
+            ) : useHtmlView ? (
+                <HtmlView
+                    documentId={documentId}
+                    versionId={versionId}
+                    initialScrollTop={initialScrollTop ?? null}
+                    onScrollChange={onScrollChange}
+                />
+            ) : useMdView ? (
+                <MdView
+                    documentId={documentId}
+                    versionId={versionId}
                     initialScrollTop={initialScrollTop ?? null}
                     onScrollChange={onScrollChange}
                 />
@@ -355,10 +385,7 @@ function EditResolveButtons({
                 );
             }
             try {
-                const {
-                    data: { session },
-                } = await supabase.auth.getSession();
-                const token = session?.access_token;
+                const token = getAuthToken();
                 const apiBase =
                     process.env.NEXT_PUBLIC_API_BASE_URL ??
                     "http://localhost:3001";
@@ -457,21 +484,20 @@ function DownloadButton({
         if (busy || isReloading) return;
         setBusy(true);
         try {
-            const {
-                data: { session },
-            } = await supabase.auth.getSession();
-            const token = session?.access_token;
+            const token = getAuthToken();
             const apiBase =
                 process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
             const qs = versionId
                 ? `?version_id=${encodeURIComponent(versionId)}`
                 : "";
-            const resp = await fetch(
-                `${apiBase}/single-documents/${documentId}/docx${qs}`,
-                {
+            const ext = filename.split(".").pop()?.toLowerCase() ?? "";
+            const endpoint =
+                ext === "docx" || ext === "doc"
+                    ? `${apiBase}/single-documents/${documentId}/docx${qs}`
+                    : `${apiBase}/single-documents/${documentId}/display${qs}`;
+            const resp = await fetch(endpoint, {
                     headers: token ? { Authorization: `Bearer ${token}` } : {},
-                },
-            );
+                });
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             const blob = await resp.blob();
             const blobUrl = URL.createObjectURL(blob);

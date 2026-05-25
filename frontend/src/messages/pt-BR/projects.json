@@ -1,0 +1,76 @@
+{
+  "title": "Projetos",
+  "newProject": "Novo Projeto",
+  "noProjects": "Nenhum projeto ainda",
+  "notFound": "Projeto não encontrado",
+  "folderPlaceholder": "Nome da pasta",
+  "fileFallback": "arquivo",
+  "uploading": "Enviando",
+  "dropFiles": "Arraste arquivos PDF ou DOCX aqui",
+  "actions": "Ações",
+  "addSubfolder": "Adicionar Subpasta",
+  "removeFromSubfolder": "Remover da subpasta",
+  "renameDocument": "Renomear documento",
+  "renameFolder": "Renomear pasta",
+  "deleteFolder": "Excluir pasta",
+  "newSubfolder": "Nova subpasta",
+  "newSubfolderInside": "Nova subpasta dentro de",
+  "downloadZipName": "documentos.zip",
+  "searchPlaceholder": "Pesquisar projetos…",
+  "tabs": {
+    "all": "Todos",
+    "mine": "Meus",
+    "sharedWithMe": "Compartilhados comigo",
+    "assistant": "Assistente",
+    "reviews": "Revisões",
+    "documents": "Documentos"
+  },
+  "tableHeaders": {
+    "name": "Nome",
+    "type": "Tipo",
+    "size": "Tamanho",
+    "version": "Versão",
+    "created": "Criado",
+    "updated": "Atualizado",
+    "cm": "CM",
+    "files": "Arquivos",
+    "chats": "Chats",
+    "reviews": "Revisões Tabulares"
+  },
+  "loadError": "Não foi possível carregar os projetos.",
+  "empty": {
+    "title": "Projetos",
+    "description": "Envie documentos para projetos e inicie chats e revisões tabulares com eles.",
+    "createNew": "Criar Novo"
+  },
+  "noSharedProjects": "Nenhum projeto compartilhado",
+  "cmPlaceholder": "CM #",
+  "ownerOnly": {
+    "deleteDocument": "excluir este documento",
+    "deleteChat": "excluir este chat",
+    "deleteReview": "excluir esta revisão tabular",
+    "renameProject": "renomear este projeto",
+    "renameChat": "renomear este chat",
+    "renameReview": "renomear esta revisão tabular",
+    "deleteSelectedDocuments": "excluir {blocked} dos documentos selecionados — apenas o criador do documento pode excluir um documento",
+    "deleteSelectedChats": "excluir {blocked} dos chats selecionados — apenas o criador do chat pode excluir um chat",
+    "deleteSelectedReviews": "excluir {blocked} das revisões selecionadas — apenas o criador da revisão pode excluir uma revisão",
+    "deleteSelectedProjects": "excluir {blocked} dos projetos selecionados — apenas o proprietário do projeto pode excluir um projeto"
+  },
+  "modal": {
+    "create": "Criar Projeto",
+    "name": "Nome do projeto",
+    "namePlaceholder": "Digite o nome do projeto",
+    "description": "Descrição",
+    "descriptionPlaceholder": "Descrição opcional"
+  },
+  "documents": {
+    "add": "Adicionar Documentos",
+    "noDocuments": "Nenhum documento neste projeto"
+  },
+  "people": {
+    "manage": "Gerenciar Pessoas",
+    "invite": "Convidar",
+    "email": "Endereço de e-mail"
+  }
+}

@@ -16,6 +16,7 @@ import type { MikeDocument, MikeWorkflow } from "../shared/types";
 import { createTabularReview } from "@/app/lib/mikeApi";
 import { useRouter } from "next/navigation";
 import { formatIcon, formatLabel } from "../tabular/columnFormat";
+import { useTranslations } from "next-intl";
 import { useDirectoryData } from "../shared/useDirectoryData";
 import { FileDirectory } from "../shared/FileDirectory";
 import type { MikeProject } from "../shared/types";
@@ -51,10 +52,14 @@ function SimpleProjectPicker({
     projects,
     selectedId,
     onSelect,
+    placeholderText,
+    noProjectsText,
 }: {
     projects: MikeProject[];
     selectedId: string | null;
     onSelect: (id: string | null) => void;
+    placeholderText: string;
+    noProjectsText: string;
 }) {
     const [search, setSearch] = useState("");
     const [open, setOpen] = useState(false);
@@ -77,7 +82,7 @@ function SimpleProjectPicker({
                 }}
                 onFocus={() => setOpen(true)}
                 onBlur={() => setTimeout(() => setOpen(false), 150)}
-                placeholder="Select a project…"
+                placeholder={placeholderText}
                 className="w-full text-xs text-gray-700 placeholder:text-gray-400 bg-gray-50 border border-gray-200 rounded-md px-3 py-2 outline-none"
             />
             {selectedId && (
@@ -95,7 +100,7 @@ function SimpleProjectPicker({
                 <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-sm overflow-y-auto max-h-40">
                     {filtered.length === 0 ? (
                         <p className="px-3 py-3 text-xs text-gray-400 text-center">
-                            No projects found
+                            {noProjectsText}
                         </p>
                     ) : (
                         filtered.map((p) => (
@@ -172,17 +177,17 @@ function MarkdownBody({ content }: { content: string }) {
 // ---------------------------------------------------------------------------
 // Right panel for assistant workflows (select screen)
 // ---------------------------------------------------------------------------
-function AssistantPanel({ workflow }: { workflow: MikeWorkflow }) {
+function AssistantPanel({ workflow, promptLabel, noPromptText }: { workflow: MikeWorkflow; promptLabel: string; noPromptText: string }) {
     return (
         <div className="flex-1 border-l border-t border-gray-200 flex flex-col overflow-hidden px-3 pb-3">
             <div className="py-3 shrink-0">
                 <p className="text-xs font-medium text-gray-700">
-                    Workflow Prompt
+                    {promptLabel}
                 </p>
             </div>
             <div className="flex-1 overflow-y-auto px-4 py-3 text-sm border border-gray-200 rounded-md text-gray-600 leading-relaxed font-serif bg-gray-50">
                 <MarkdownBody
-                    content={workflow.prompt_md ?? "_No prompt defined._"}
+                    content={workflow.prompt_md ?? noPromptText}
                 />
             </div>
         </div>
@@ -192,7 +197,15 @@ function AssistantPanel({ workflow }: { workflow: MikeWorkflow }) {
 // ---------------------------------------------------------------------------
 // Right panel for tabular workflows — accordion column list (select screen)
 // ---------------------------------------------------------------------------
-function TabularPanel({ workflow }: { workflow: MikeWorkflow }) {
+function TabularPanel({ workflow, columnsLabel, noColumnsText, tagsLabel, promptLabel, noPromptText }: {
+    workflow: MikeWorkflow;
+    columnsLabel: string;
+    noColumnsText: string;
+    tagsLabel: string;
+    promptLabel: string;
+    noPromptText: string;
+}) {
+    const t = useTranslations("tabular");
     const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
     const columns = (workflow.columns_config ?? []).sort(
         (a, b) => a.index - b.index,
@@ -201,12 +214,12 @@ function TabularPanel({ workflow }: { workflow: MikeWorkflow }) {
     return (
         <div className="flex-1 border-l border-t border-gray-200 flex flex-col overflow-hidden px-3 pb-3">
             <div className="py-3 shrink-0">
-                <p className="text-xs font-medium text-gray-700">Columns</p>
+                <p className="text-xs font-medium text-gray-700">{columnsLabel}</p>
             </div>
             <div className="flex-1 overflow-y-auto border border-gray-200 rounded-md bg-gray-50">
                 {columns.length === 0 ? (
                     <p className="px-4 py-6 text-xs text-center text-gray-400">
-                        No columns defined
+                        {noColumnsText}
                     </p>
                 ) : (
                     columns.map((col) => {
@@ -231,7 +244,7 @@ function TabularPanel({ workflow }: { workflow: MikeWorkflow }) {
                                         {col.name}
                                     </span>
                                     <span className="shrink-0 text-gray-400">
-                                        {formatLabel(col.format ?? "text")}
+                                        {formatLabel(t, col.format ?? "text")}
                                     </span>
                                     <ChevronDown
                                         className={`h-3 w-3 shrink-0 text-gray-300 transition-transform duration-150 ${isExpanded ? "rotate-180" : ""}`}
@@ -242,7 +255,7 @@ function TabularPanel({ workflow }: { workflow: MikeWorkflow }) {
                                         {col.tags && col.tags.length > 0 && (
                                             <div>
                                                 <p className="text-xs font-medium text-gray-400 mb-1.5 font-sans">
-                                                    Tags
+                                                    {tagsLabel}
                                                 </p>
                                                 <div className="flex flex-wrap gap-1.5">
                                                     {col.tags.map((tag) => (
@@ -258,12 +271,11 @@ function TabularPanel({ workflow }: { workflow: MikeWorkflow }) {
                                         )}
                                         <div>
                                             <p className="text-xs font-medium text-gray-400 mb-1 font-sans">
-                                                Prompt
+                                                {promptLabel}
                                             </p>
                                             <MarkdownBody
                                                 content={
-                                                    col.prompt ||
-                                                    "_No prompt defined._"
+                                                    col.prompt || noPromptText
                                                 }
                                             />
                                         </div>
@@ -282,6 +294,8 @@ function TabularPanel({ workflow }: { workflow: MikeWorkflow }) {
 // DisplayWorkflowModal
 // ---------------------------------------------------------------------------
 export function DisplayWorkflowModal({ workflows, workflow, onClose }: Props) {
+    const t = useTranslations("tabular");
+    const tw = useTranslations("workflows");
     const [screen, setScreen] = useState<"select" | "configure">("select");
     const [selected, setSelected] = useState<MikeWorkflow | null>(workflow);
     const [listSearch, setListSearch] = useState("");
@@ -454,9 +468,9 @@ export function DisplayWorkflowModal({ workflows, workflow, onClose }: Props) {
                     <div className="flex items-center gap-1.5 text-xs text-gray-400">
                         {screen === "select" ? (
                             <>
-                                <span>Workflows</span>
+                                <span>{tw("display.workflows")}</span>
                                 <span>›</span>
-                                <span>Select workflow</span>
+                                <span>{tw("display.selectWorkflow")}</span>
                             </>
                         ) : (
                             <>
@@ -464,7 +478,7 @@ export function DisplayWorkflowModal({ workflows, workflow, onClose }: Props) {
                                     onClick={() => setScreen("select")}
                                     className="hover:text-gray-700 transition-colors"
                                 >
-                                    Workflows
+                                    {tw("display.workflows")}
                                 </button>
                                 <span>›</span>
                                 <span className="truncate max-w-[160px]">
@@ -473,8 +487,8 @@ export function DisplayWorkflowModal({ workflows, workflow, onClose }: Props) {
                                 <span>›</span>
                                 <span>
                                     {wf.type === "assistant"
-                                        ? "New Chat"
-                                        : "New Review"}
+                                        ? tw("display.newChat")
+                                        : tw("display.newReview")}
                                 </span>
                             </>
                         )}
@@ -499,7 +513,7 @@ export function DisplayWorkflowModal({ workflows, workflow, onClose }: Props) {
                                         <Search className="h-3 w-3 text-gray-400 shrink-0" />
                                         <input
                                             type="text"
-                                            placeholder="Search…"
+                                            placeholder={tw("display.search")}
                                             value={listSearch}
                                             onChange={(e) => setListSearch(e.target.value)}
                                             className="flex-1 bg-transparent text-xs text-gray-700 placeholder:text-gray-400 outline-none"
@@ -538,9 +552,22 @@ export function DisplayWorkflowModal({ workflows, workflow, onClose }: Props) {
 
                             {/* Right: workflow detail */}
                             {wf.type === "assistant" ? (
-                                <AssistantPanel key={wf.id} workflow={wf} />
+                                <AssistantPanel
+                                    key={wf.id}
+                                    workflow={wf}
+                                    promptLabel={tw("display.workflowPrompt")}
+                                    noPromptText={tw("display.noPrompt")}
+                                />
                             ) : (
-                                <TabularPanel key={wf.id} workflow={wf} />
+                                <TabularPanel
+                                    key={wf.id}
+                                    workflow={wf}
+                                    columnsLabel={tw("display.columns")}
+                                    noColumnsText={tw("display.noColumns")}
+                                    tagsLabel={tw("display.tags")}
+                                    promptLabel={tw("display.prompt")}
+                                    noPromptText={tw("display.noPrompt")}
+                                />
                             )}
                         </div>
 
@@ -553,7 +580,7 @@ export function DisplayWorkflowModal({ workflows, workflow, onClose }: Props) {
                                     }}
                                     className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-50 transition-colors"
                                 >
-                                    View Page
+                                    {tw("display.viewPage")}
                                 </button>
                             ) : (
                                 <button
@@ -563,14 +590,14 @@ export function DisplayWorkflowModal({ workflows, workflow, onClose }: Props) {
                                     }}
                                     className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-50 transition-colors"
                                 >
-                                    Edit
+                                    {tw("display.edit")}
                                 </button>
                             )}
                             <button
                                 onClick={() => setScreen("configure")}
                                 className="rounded-lg bg-gray-900 px-5 py-2 text-sm font-medium text-white hover:bg-gray-700"
                             >
-                                Use
+                                {tw("display.use")}
                             </button>
                         </div>
                     </>
@@ -583,7 +610,7 @@ export function DisplayWorkflowModal({ workflows, workflow, onClose }: Props) {
                             {/* Add-on prompt */}
                             <div className="px-5 pb-3 shrink-0">
                                 <p className="text-xs font-medium text-gray-700 mb-2">
-                                    Message (optional)
+                                    {tw("display.messageOptional")}
                                 </p>
                                 <textarea
                                     rows={3}
@@ -591,7 +618,7 @@ export function DisplayWorkflowModal({ workflows, workflow, onClose }: Props) {
                                     onChange={(e) =>
                                         setAssistantPrompt(e.target.value)
                                     }
-                                    placeholder="Add any additional instructions to the workflow prompt…"
+                                    placeholder={tw("display.messageHint")}
                                     className="w-full text-sm text-gray-700 placeholder:text-gray-400 bg-gray-50 border border-gray-200 rounded-md px-3 py-2 resize-none outline-none leading-relaxed"
                                 />
                             </div>
@@ -599,7 +626,7 @@ export function DisplayWorkflowModal({ workflows, workflow, onClose }: Props) {
                             {/* Toggle row */}
                             <div className="px-5 py-3 flex flex-col gap-2 shrink-0">
                                 <span className="text-xs font-medium text-gray-700">
-                                    Create in a project
+                                    {tw("display.createInProject")}
                                 </span>
                                 <Toggle
                                     on={inProject}
@@ -616,7 +643,7 @@ export function DisplayWorkflowModal({ workflows, workflow, onClose }: Props) {
                                 <>
                                     <div className="px-5 pt-1 pb-1 shrink-0">
                                         <p className="text-xs font-medium text-gray-700">
-                                            Select project
+                                            {tw("display.selectProjectLabel")}
                                         </p>
                                     </div>
                                     <div className="px-5 pb-2 shrink-0">
@@ -624,6 +651,8 @@ export function DisplayWorkflowModal({ workflows, workflow, onClose }: Props) {
                                             projects={projects}
                                             selectedId={selectedProjectId}
                                             onSelect={setSelectedProjectId}
+                                            placeholderText={tw("display.selectProject")}
+                                            noProjectsText={tw("display.noProjects")}
                                         />
                                     </div>
                                 </>
@@ -631,7 +660,7 @@ export function DisplayWorkflowModal({ workflows, workflow, onClose }: Props) {
                                 <>
                                     <div className="px-5 pt-1 pb-1 shrink-0">
                                         <p className="text-xs font-medium text-gray-700">
-                                            Select documents
+                                            {tw("display.selectDocuments")}
                                         </p>
                                     </div>
 
@@ -641,7 +670,7 @@ export function DisplayWorkflowModal({ workflows, workflow, onClose }: Props) {
                                             <Search className="h-3 w-3 text-gray-400 shrink-0" />
                                             <input
                                                 type="text"
-                                                placeholder="Search…"
+                                                placeholder={tw("display.search")}
                                                 value={docSearch}
                                                 onChange={(e) =>
                                                     setDocSearch(e.target.value)
@@ -675,8 +704,8 @@ export function DisplayWorkflowModal({ workflows, workflow, onClose }: Props) {
                                             forceExpanded={!!q}
                                             emptyMessage={
                                                 q
-                                                    ? "No matches found"
-                                                    : "No documents yet"
+                                                    ? tw("display.noMatches")
+                                                    : tw("display.noDocs")
                                             }
                                         />
                                     </div>
@@ -687,7 +716,7 @@ export function DisplayWorkflowModal({ workflows, workflow, onClose }: Props) {
                         <div className="border-t border-gray-200 px-5 py-3 flex items-center justify-between shrink-0">
                             <span className="text-xs text-gray-400">
                                 {!inProject && selectedDocIds.size > 0
-                                    ? `${selectedDocIds.size} selected`
+                                    ? tw("display.selected", { count: selectedDocIds.size })
                                     : ""}
                             </span>
                             <button
@@ -697,7 +726,7 @@ export function DisplayWorkflowModal({ workflows, workflow, onClose }: Props) {
                                 }
                                 className="rounded-lg bg-gray-900 px-5 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50"
                             >
-                                {saving ? "Starting…" : "Start Chat"}
+                                {saving ? tw("display.starting") : tw("display.startChat")}
                             </button>
                         </div>
                     </>
@@ -710,7 +739,7 @@ export function DisplayWorkflowModal({ workflows, workflow, onClose }: Props) {
                             {/* Toggle stacked */}
                             <div className="px-5 pb-3 flex flex-col gap-2 shrink-0">
                                 <span className="text-xs font-medium text-gray-700">
-                                    Create in a project
+                                    {tw("display.createInProject")}
                                 </span>
                                 <Toggle
                                     on={inProject}
@@ -728,7 +757,7 @@ export function DisplayWorkflowModal({ workflows, workflow, onClose }: Props) {
                                 <>
                                     <div className="px-5 pt-1 pb-1 shrink-0">
                                         <p className="text-xs font-medium text-gray-700">
-                                            Select Project
+                                            {tw("display.selectProjectLabel")}
                                         </p>
                                     </div>
                                     <div className="px-5 pb-2 shrink-0">
@@ -742,6 +771,8 @@ export function DisplayWorkflowModal({ workflows, workflow, onClose }: Props) {
                                                         new Set(),
                                                     );
                                             }}
+                                            placeholderText={tw("display.selectProject")}
+                                            noProjectsText={tw("display.noProjects")}
                                         />
                                     </div>
                                 </>
@@ -750,7 +781,7 @@ export function DisplayWorkflowModal({ workflows, workflow, onClose }: Props) {
                             {/* Documents section */}
                             <div className="px-5 pt-3 pb-1 shrink-0">
                                 <p className="text-xs font-medium text-gray-700">
-                                    Select Documents
+                                    {tw("display.selectDocuments")}
                                 </p>
                             </div>
 
@@ -760,7 +791,7 @@ export function DisplayWorkflowModal({ workflows, workflow, onClose }: Props) {
                                     <Search className="h-3 w-3 text-gray-400 shrink-0" />
                                     <input
                                         type="text"
-                                        placeholder="Search…"
+                                        placeholder={tw("display.search")}
                                         value={docSearch}
                                         onChange={(e) =>
                                             setDocSearch(e.target.value)
@@ -796,10 +827,10 @@ export function DisplayWorkflowModal({ workflows, workflow, onClose }: Props) {
                                     forceExpanded={!!q || inProject}
                                     emptyMessage={
                                         q
-                                            ? "No matches found"
+                                            ? tw("display.noMatches")
                                             : inProject
-                                              ? "No documents in this project"
-                                              : "No documents yet"
+                                              ? tw("display.noDocsInProject")
+                                              : tw("display.noDocs")
                                     }
                                 />
                             </div>
@@ -808,7 +839,7 @@ export function DisplayWorkflowModal({ workflows, workflow, onClose }: Props) {
                         <div className="border-t border-gray-200 px-5 py-3 flex items-center justify-between shrink-0">
                             <span className="text-xs text-gray-400">
                                 {selectedDocIds.size > 0
-                                    ? `${selectedDocIds.size} selected`
+                                    ? tw("display.selected", { count: selectedDocIds.size })
                                     : ""}
                             </span>
                             <button
@@ -820,7 +851,7 @@ export function DisplayWorkflowModal({ workflows, workflow, onClose }: Props) {
                                 }
                                 className="rounded-lg bg-gray-900 px-5 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50"
                             >
-                                {saving ? "Creating…" : "Create Review"}
+                                {saving ? tw("display.creating") : tw("display.createReview")}
                             </button>
                         </div>
                     </>

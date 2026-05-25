@@ -1,0 +1,48 @@
+{
+  "meta": {
+    "title": "Mike - AI Legal Platform",
+    "description": "AI-powered legal document analysis and contract review platform."
+  },
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "confirm": "Confirm",
+    "close": "Close",
+    "edit": "Edit",
+    "add": "Add",
+    "remove": "Remove",
+    "create": "Create",
+    "loading": "Loading...",
+    "submit": "Submit",
+    "back": "Back",
+    "next": "Next",
+    "done": "Done",
+    "copy": "Copy",
+    "share": "Share",
+    "download": "Download",
+    "upload": "Upload",
+    "search": "Search",
+    "clear": "Clear"
+  },
+  "nav": {
+    "projects": "Projects",
+    "workflows": "Workflows",
+    "assistant": "Assistant",
+    "account": "Account",
+    "tabularReviews": "Tabular Reviews",
+    "documents": "Documents",
+    "language": "Language",
+    "people": "People"
+  },
+  "language": {
+    "en": "English",
+    "ptBR": "Português (Brasil)"
+  },
+  "status": {
+    "error": "An error occurred",
+    "success": "Success",
+    "notFound": "Not found",
+    "unauthorized": "Unauthorized"
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "initialView": {
+    "title": "How can I help you today?",
+    "placeholder": "Ask me anything about your legal documents...",
+    "greeting": "Hi, {username}",
+    "greetingFallback": "there"
+  },
+  "chatInput": {
+    "placeholder": "Message Mike...",
+    "addDocument": "Add document",
+    "send": "Send",
+    "askPlaceholder": "Ask a question about your documents...",
+    "workflows": "Workflows",
+    "projects": "Projects",
+    "openWorkflows": "Open workflows",
+    "openProjects": "Open projects"
+  },
+  "sidePanel": {
+    "title": "Sources",
+    "noDocuments": "No documents attached",
+    "closePanel": "Close panel"
+  },
+  "message": {
+    "errorDefault": "Sorry, something went wrong.",
+    "thinkingPhrases": [
+      "Thinking...",
+      "Pondering...",
+      "Analyzing...",
+      "Reviewing...",
+      "Reasoning..."
+    ],
+    "thoughtProcess": "Thought process",
+    "reading": "Reading",
+    "read": "Read",
+    "finding": "Finding",
+    "found": "Found",
+    "matchCount": "({count, plural, one {{count} match} other {{count} matches}})",
+    "creating": "Creating",
+    "created": "Created",
+    "replicating": "Replicating",
+    "replicated": "Replicated",
+    "times": "{count} times",
+    "inFilename": "in {filename}",
+    "appliedWorkflow": "Applied Workflow",
+    "editing": "Editing",
+    "editFailed": "Edit failed",
+    "edited": "Edited"
+  },
+  "toolCall": {
+    "generateDocx": "Creating document...",
+    "editDocument": "Editing document...",
+    "readDocument": "Reading document...",
+    "readDocuments": "Reading documents...",
+    "findInDocument": "Searching document...",
+    "replicateDocument": "Copying document...",
+    "readWorkflow": "Loading workflow...",
+    "listWorkflows": "Loading workflows...",
+    "listDocuments": "Loading documents...",
+    "running": "Running {name}...",
+    "working": "Working..."
+  },
+  "editCard": {
+    "accept": "Accept",
+    "accepted": "Accepted",
+    "reject": "Reject",
+    "rejected": "Rejected",
+    "view": "View",
+    "acceptAll": "Accept all",
+    "rejectAll": "Reject all",
+    "resolvedTooltip": "This change has been resolved and is no longer in the document.",
+    "saveAcceptError": "Couldn't save accept — reverted.",
+    "saveRejectError": "Couldn't save reject — reverted.",
+    "bulkAcceptError": "Couldn't save one or more accepts.",
+    "bulkRejectError": "Couldn't save one or more rejects.",
+    "collapseEdits": "Collapse edits",
+    "expandEdits": "Expand edits",
+    "pendingTrackedChanges": "{count, plural, one {{count} tracked change} other {{count} tracked changes}}",
+    "pendingTrackedChangesAcrossDocs": "{count} tracked changes across {docCount} documents",
+    "resolvedTrackedChanges": "{count, plural, one {{count} resolved tracked change} other {{count} resolved tracked changes}}",
+    "resolvedTrackedChangesAcrossDocs": "{count} resolved tracked changes across {docCount} documents"
+  },
+  "addDocButton": {
+    "addDocuments": "Add documents",
+    "document": "Document",
+    "documents": "Documents",
+    "uploading": "Uploading…",
+    "uploadFiles": "Upload files",
+    "browseAll": "Browse all"
+  },
+  "workflowModal": {
+    "addWorkflow": "Add workflow",
+    "searchPlaceholder": "Search workflows…",
+    "noMatches": "No matches found",
+    "noWorkflows": "No assistant workflows found",
+    "workflowPrompt": "Workflow Prompt",
+    "noPrompt": "_No prompt defined._"
+  },
+  "projectModal": {
+    "startChat": "Start Chat in a Project",
+    "continue": "Continue"
+  },
+  "modelToggle": {
+    "apiKeyMissingTitle": "API key missing for selected model",
+    "chooseModel": "Choose model",
+    "apiKeyMissingAria": "API key missing",
+    "loadingModels": "Loading models…",
+    "searchPlaceholder": "Search models…",
+    "noModelsMatch": "No models match \"{search}\"",
+    "free": "free"
+  },
+  "disclaimer": "AI can make mistakes. Answers are not legal advice."
+}
