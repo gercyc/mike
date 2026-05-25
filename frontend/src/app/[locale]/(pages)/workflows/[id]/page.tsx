@@ -3,7 +3,7 @@
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { ChevronDown, Plus, Users, X } from "lucide-react";
+import { ChevronDown, CodeXml, Plus, Users, X } from "lucide-react";
 import { getWorkflow, updateWorkflow } from "@/app/lib/mikeApi";
 import { ShareWorkflowModal } from "@/app/components/workflows/ShareWorkflowModal";
 import { WFEditColumnModal } from "@/app/components/workflows/WFEditColumnModal";
@@ -17,6 +17,7 @@ import {
 import { formatIcon, formatLabel } from "@/app/components/tabular/columnFormat";
 import { useTranslations } from "next-intl";
 import { RenameableTitle } from "@/app/components/shared/RenameableTitle";
+import { WorkflowAssetsPanel } from "@/app/components/workflows/WorkflowAssetsPanel";
 // dynamic import keeps Tiptap (browser-only) out of the SSR bundle
 const WorkflowPromptEditor = dynamic(
     () =>
@@ -31,6 +32,7 @@ interface Props {
 }
 
 type SaveStatus = "idle" | "saving" | "saved";
+type PageTab = "content" | "assets";
 
 const CHECK_W = "w-8 shrink-0";
 const NAME_COL_W = "w-[300px] shrink-0";
@@ -71,6 +73,9 @@ export default function WorkflowDetailPage({ params }: Props) {
     const [addColumnOpen, setAddColumnOpen] = useState(false);
     const [editingColumn, setEditingColumn] = useState<ColumnConfig | null>(null);
     const [viewingColumn, setViewingColumn] = useState<ColumnConfig | null>(null);
+
+    // Page tab
+    const [pageTab, setPageTab] = useState<PageTab>("content");
 
     // Share popover
     const [shareOpen, setShareOpen] = useState(false);
@@ -303,16 +308,39 @@ export default function WorkflowDetailPage({ params }: Props) {
                 </div>
             </div>
 
-            {/* Read-only badge for built-in workflows */}
-            {readOnly && (
-                <div className="flex items-center h-10 px-8 border-b border-gray-200">
-                    <span className="text-xs text-gray-400">Read-only</span>
-                </div>
-            )}
+            {/* Tab bar */}
+            <div className="flex items-center gap-0 px-8 border-b border-gray-200 shrink-0">
+                <button
+                    onClick={() => setPageTab("content")}
+                    className={`flex items-center gap-1.5 px-1 py-2.5 mr-5 text-xs font-medium border-b-2 transition-colors ${
+                        pageTab === "content"
+                            ? "border-gray-900 text-gray-900"
+                            : "border-transparent text-gray-400 hover:text-gray-700"
+                    }`}
+                >
+                    {workflow.type === "assistant" ? "Prompt" : "Columns"}
+                </button>
+                <button
+                    onClick={() => setPageTab("assets")}
+                    className={`flex items-center gap-1.5 px-1 py-2.5 text-xs font-medium border-b-2 transition-colors ${
+                        pageTab === "assets"
+                            ? "border-gray-900 text-gray-900"
+                            : "border-transparent text-gray-400 hover:text-gray-700"
+                    }`}
+                >
+                    <CodeXml className="h-3.5 w-3.5" />
+                    Assets
+                </button>
+                {readOnly && (
+                    <span className="ml-auto text-xs text-gray-400 pb-2.5">Read-only</span>
+                )}
+            </div>
 
             {/* Body */}
             <div className="flex-1 min-h-0 flex flex-col">
-                {workflow.type === "assistant" ? (
+                {pageTab === "assets" ? (
+                    <WorkflowAssetsPanel workflowId={id} readOnly={readOnly} />
+                ) : workflow.type === "assistant" ? (
                     /* ── Assistant: WYSIWYG editor ── */
                     <div className="flex-1 min-h-0 p-6">
                         <WorkflowPromptEditor

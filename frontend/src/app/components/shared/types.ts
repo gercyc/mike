@@ -288,6 +288,21 @@ export interface MikeWorkflow {
   is_owner?: boolean;
 }
 
+// Workflow Assets
+
+export interface WorkflowAsset {
+  id: string;
+  workflow_id: string;
+  user_id: string;
+  name: string;
+  type: "html" | "text" | "image";
+  content: string | null;
+  mime_type: string | null;
+  size_bytes: number | null;
+  download_url: string | null;
+  created_at: string;
+}
+
 // API helpers
 
 export interface MikeChatDetailOut {

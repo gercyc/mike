@@ -6,8 +6,8 @@ import {
     uploadFile,
 } from "./storage";
 import { convertedPdfKey } from "./convert";
-import { eq, inArray, desc } from "drizzle-orm";
-import { getDb, documents, documentVersions, documentEdits, chats, chatMessages, workflows, workflowShares, hiddenWorkflows } from "../db";
+import { eq, inArray, desc, and } from "drizzle-orm";
+import { getDb, documents, documentVersions, documentEdits, chats, chatMessages, workflows, workflowShares, hiddenWorkflows, workflowAssets } from "../db";
 import {
     applyTrackedEdits,
     extractDocxBodyText,
@@ -25,6 +25,12 @@ import {
     type LlmMessage,
     type OpenAIToolSchema,
 } from "./llm";
+
+function stripBase64FromHtml(html: string): string {
+    // Remove inline base64 data URIs (images, fonts, etc.) — they are binary
+    // blobs that cannot be sent to the LLM and would bloat the context.
+    return html.replace(/data:[^"'\s;,]+;base64,[A-Za-z0-9+/=\s]*/gi, "[base64-data-removed]");
+}
 
 const STANDARD_FONT_DATA_URL = (() => {
     try {
@@ -44,7 +50,17 @@ export type DocStore = Map<
     { storage_path: string; file_type: string; filename: string }
 >;
 
-export type WorkflowStore = Map<string, { title: string; prompt_md: string }>;
+export type WorkflowAssetEntry = {
+    id: string;
+    name: string;
+    type: "html" | "text";
+    content: string;
+};
+
+export type WorkflowStore = Map<
+    string,
+    { title: string; prompt_md: string; assets?: WorkflowAssetEntry[] }
+>;
 
 export type DocIndex = Record<
     string,
@@ -1330,12 +1346,18 @@ export async function generateHtml(
                 parts.push(`<h${lvl}>${escapeHtml(s.heading)}</h${lvl}>`);
             }
             if (s.content) {
-                const paras = s.content
-                    .split(/\n{2,}/)
-                    .map((p) => p.trim())
-                    .filter(Boolean);
-                for (const para of paras) {
-                    parts.push(`<p>${escapeHtml(para).replace(/\n/g, "<br>")}</p>`);
+                const trimmedContent = s.content.trim();
+                if (/^<[a-zA-Z!]/.test(trimmedContent)) {
+                    // Content is raw HTML — emit as-is without escaping
+                    parts.push(trimmedContent);
+                } else {
+                    const paras = trimmedContent
+                        .split(/\n{2,}/)
+                        .map((p) => p.trim())
+                        .filter(Boolean);
+                    for (const para of paras) {
+                        parts.push(`<p>${escapeHtml(para).replace(/\n/g, "<br>")}</p>`);
+                    }
                 }
             }
             if (s.table) {
@@ -2182,10 +2204,33 @@ export async function runToolCalls(
                 );
                 workflowsApplied.push({ workflow_id: wfId, title: wf.title });
             }
+            let workflowContent = wf ? wf.prompt_md : `Workflow '${wfId}' not found.`;
+            if (wf?.assets && wf.assets.length > 0) {
+                const htmlAssets = wf.assets.filter((a) => a.type === "html");
+                const textAssets = wf.assets.filter((a) => a.type === "text");
+                if (htmlAssets.length > 0) {
+                    workflowContent += "\n\n---\nHTML TEMPLATE ASSETS:\n";
+                    workflowContent +=
+                        "When generating an HTML document for this workflow, you MUST use the template(s) below as the structural basis. " +
+                        "Preserve the layout, styles, and placeholders defined in the template. " +
+                        "Fill in the dynamic content where appropriate. " +
+                        "Use generate_html and replicate the template structure in your sections. " +
+                        "Do NOT send the raw template back to the user — produce the filled document.\n";
+                    for (const asset of htmlAssets) {
+                        workflowContent += `\n### Template: ${asset.name}\n\`\`\`html\n${asset.content}\n\`\`\`\n`;
+                    }
+                }
+                if (textAssets.length > 0) {
+                    workflowContent += "\n\n---\nTEXT ASSETS:\n";
+                    for (const asset of textAssets) {
+                        workflowContent += `\n### ${asset.name}\n${asset.content}\n`;
+                    }
+                }
+            }
             toolResults.push({
                 role: "tool",
                 tool_call_id: tc.id,
-                content: wf ? wf.prompt_md : `Workflow '${wfId}' not found.`,
+                content: workflowContent,
             });
         } else if (tc.function.name === "read_table_cells" && tabularStore) {
             const colIndices = args.col_indices as number[] | undefined;
@@ -3319,7 +3364,7 @@ export async function buildDocContext(
         const rows = await drizzle
             .select({ content: chatMessages.content })
             .from(chatMessages)
-            .where(eq(chatMessages.chatId, chatId) && eq(chatMessages.role, "assistant") as any);
+            .where(and(eq(chatMessages.chatId, chatId), eq(chatMessages.role, "assistant")));
         for (const row of rows) {
             const content = row.content;
             if (!Array.isArray(content)) continue;
@@ -3345,7 +3390,7 @@ export async function buildDocContext(
                 status: documents.status,
             })
             .from(documents)
-            .where(inArray(documents.id, ids) && eq(documents.userId, userId) && eq(documents.status, "ready") as any);
+            .where(and(inArray(documents.id, ids), eq(documents.userId, userId), eq(documents.status, "ready")));
 
         type DocRow = {
             id: string;
@@ -3548,5 +3593,42 @@ export async function buildWorkflowStore(
             }
         }
     }
+
+    // Attach HTML/text assets to every workflow now in the store.
+    const workflowIds = [...store.keys()].filter(
+        (id) => !BUILTIN_WORKFLOWS.some((b) => b.id === id),
+    );
+    if (workflowIds.length > 0) {
+        const assetRows = await drizzle
+            .select({
+                id: workflowAssets.id,
+                workflowId: workflowAssets.workflowId,
+                name: workflowAssets.name,
+                type: workflowAssets.type,
+                content: workflowAssets.content,
+            })
+            .from(workflowAssets)
+            .where(
+                inArray(workflowAssets.workflowId, workflowIds) &&
+                inArray(workflowAssets.type, ["html", "text"]) as any,
+            );
+
+        for (const row of assetRows) {
+            const entry = store.get(row.workflowId);
+            if (!entry || !row.content) continue;
+            const sanitized = row.type === "html"
+                ? stripBase64FromHtml(row.content)
+                : row.content;
+            const asset: WorkflowAssetEntry = {
+                id: row.id,
+                name: row.name,
+                type: row.type as "html" | "text",
+                content: sanitized,
+            };
+            if (!entry.assets) entry.assets = [];
+            entry.assets.push(asset);
+        }
+    }
+
     return store;
 }

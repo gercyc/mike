@@ -9,17 +9,34 @@ import { createHash } from "crypto";
 
 export async function runMigrations() {
   const url = buildDatabaseUrl();
-  // Use a dedicated client for migrations (single connection is safer)
   const migrationClient = postgres(url, { max: 1 });
   const db = drizzle(migrationClient, { schema });
 
   await ensureBaseline(migrationClient);
 
-  console.log("Running database migrations...");
-  await migrate(db, { migrationsFolder: "./migrations" });
-  console.log("Database migrations completed.");
+  const before = await getAppliedMigrations(migrationClient);
+  console.log(`Running database migrations... (${before.length} already applied)`);
+
+  try {
+    await migrate(db, { migrationsFolder: "./migrations" });
+  } catch (err) {
+    console.error("Migration error:", err);
+    throw err;
+  }
+
+  const after = await getAppliedMigrations(migrationClient);
+  const newlyApplied = after.length - before.length;
+  console.log(`Database migrations completed. ${newlyApplied} new migration(s) applied.`);
 
   await migrationClient.end();
+}
+
+async function getAppliedMigrations(client: postgres.Sql) {
+  try {
+    return await client`SELECT hash, created_at FROM drizzle.__drizzle_migrations ORDER BY created_at`;
+  } catch {
+    return [];
+  }
 }
 
 async function ensureBaseline(client: postgres.Sql) {

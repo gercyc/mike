@@ -16,6 +16,7 @@ import type {
     MikeWorkflow,
     TabularReview,
     TabularReviewDetailOut,
+    WorkflowAsset,
 } from "@/app/components/shared/types";
 
 // Server-side shape before mapping
@@ -897,4 +898,63 @@ export async function deleteWorkflowShare(
     await apiRequest(`/workflows/${workflowId}/shares/${shareId}`, {
         method: "DELETE",
     });
+}
+
+// ---------------------------------------------------------------------------
+// Workflow Assets
+// ---------------------------------------------------------------------------
+
+export async function listWorkflowAssets(workflowId: string): Promise<WorkflowAsset[]> {
+    return apiRequest<WorkflowAsset[]>(`/workflows/${workflowId}/assets`);
+}
+
+export async function createWorkflowAsset(
+    workflowId: string,
+    payload: { name: string; type: "html" | "text"; content?: string },
+): Promise<WorkflowAsset> {
+    return apiRequest<WorkflowAsset>(`/workflows/${workflowId}/assets`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+    });
+}
+
+export async function uploadWorkflowAsset(
+    workflowId: string,
+    file: File,
+    name?: string,
+): Promise<WorkflowAsset> {
+    const form = new FormData();
+    form.append("file", file);
+    if (name) form.append("name", name);
+    return apiRequest<WorkflowAsset>(`/workflows/${workflowId}/assets/upload`, {
+        method: "POST",
+        body: form,
+    });
+}
+
+export async function updateWorkflowAsset(
+    workflowId: string,
+    assetId: string,
+    payload: { name?: string; content?: string },
+): Promise<WorkflowAsset> {
+    return apiRequest<WorkflowAsset>(`/workflows/${workflowId}/assets/${assetId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+    });
+}
+
+export async function deleteWorkflowAsset(workflowId: string, assetId: string): Promise<void> {
+    await apiRequest(`/workflows/${workflowId}/assets/${assetId}`, { method: "DELETE" });
+}
+
+export async function getWorkflowAssetDownloadUrl(
+    workflowId: string,
+    assetId: string,
+): Promise<string> {
+    const result = await apiRequest<{ url: string }>(
+        `/workflows/${workflowId}/assets/${assetId}/download`,
+    );
+    return result.url;
 }

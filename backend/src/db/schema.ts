@@ -215,6 +215,21 @@ export const workflowShares = pgTable("workflow_shares", {
   index("workflow_shares_email_idx").on(t.sharedWithEmail),
 ]);
 
+export const workflowAssets = pgTable("workflow_assets", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workflowId: uuid("workflow_id").notNull().references(() => workflows.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull(),
+  name: text("name").notNull(),
+  type: text("type").notNull(), // "html" | "image"
+  content: text("content"),      // for html assets: inline content
+  storagePath: text("storage_path"), // for image assets: S3 key
+  mimeType: text("mime_type"),
+  sizeBytes: integer("size_bytes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("idx_workflow_assets_workflow").on(t.workflowId),
+]);
+
 // ---------------------------------------------------------------------------
 // Chats
 // ---------------------------------------------------------------------------
