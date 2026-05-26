@@ -17,19 +17,19 @@ jobs:
 
       - name: Build backend image
         run: |
-          podman build -t homeserver:32081/mike-backend:latest ./backend
+          docker build -t homeserver:32081/mike-backend:latest ./backend
 
       - name: Build frontend image
         run: |
-          podman build \
+          docker build \
             --build-arg NEXT_PUBLIC_API_BASE_URL="${{ vars.NEXT_PUBLIC_API_BASE_URL || 'https://mike-api.camposdev.ind.br' }}" \
             -t homeserver:32081/mike-frontend:latest \
             ./frontend
 
       - name: Push backend image
         run: |
-          podman push --tls-verify=false homeserver:32081/mike-backend:latest
+          docker push homeserver:32081/mike-backend:latest
 
       - name: Push frontend image
         run: |
-          podman push --tls-verify=false homeserver:32081/mike-frontend:latest
+          docker push homeserver:32081/mike-frontend:latest
