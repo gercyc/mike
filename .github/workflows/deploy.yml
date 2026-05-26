@@ -6,6 +6,9 @@ on:
       - main
   workflow_dispatch:
 
+env:
+  COMPOSE_DIR: /DATA/AppData/mike
+
 jobs:
   build-and-push:
     name: Build & Push Images
@@ -33,3 +36,11 @@ jobs:
       - name: Push frontend image
         run: |
           docker push homeserver:32081/mike-frontend:latest
+      
+      - name: Deploy
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          cd ${{ env.COMPOSE_DIR }}
+          docker compose pull
+          docker compose up -d
+          docker image prune -f
